@@ -2,7 +2,7 @@
   "name": "mintify",
   "private": true,
   "scripts": {
-    "build:all": "turbo run build",
+    "build": "turbo run build",
     "build:api": "turbo run build --filter=api",
     "build:web": "turbo run build --filter=web",
     "dev": "turbo dev",
