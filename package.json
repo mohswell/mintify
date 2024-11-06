@@ -2,7 +2,9 @@
   "name": "mintify",
   "private": true,
   "scripts": {
-    "build": "turbo build",
+    "build:all": "turbo run build",
+    "build:api": "turbo run build --filter=api",
+    "build:web": "turbo run build --filter=web",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
