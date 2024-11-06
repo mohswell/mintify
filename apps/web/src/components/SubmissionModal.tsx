@@ -354,7 +354,7 @@ function PhotoView({
         <>
           <div className="w-full h-full flex justify-center items-center bg-black/30 opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute z-[2] transition-all duration-300 ease-in-out">
             <button
-              onClick={() => onRemove(images[activeImage].id)}
+              onClick={() => images[activeImage] && onRemove(images[activeImage].id || "")}
               className="p-1 text-white hover:text-red-600 transition-colors duration-200"
             >
               <IconTrash className="h-auto w-8" />
@@ -365,7 +365,7 @@ function PhotoView({
             width={551}
             height={551}
             alt="submission image"
-            src={images[activeImage].url}
+            src={images[activeImage]?.url || ""}
             className="w-full h-full object-cover object-center z-[1]"
           />
         </>
