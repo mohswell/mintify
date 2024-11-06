@@ -1,5 +1,5 @@
-export interface GenAiResponse {
-    totalTokens: number;
-    text: string;
-  }
-  
+export interface AnalyzeImage {
+  prompt: string;
+  firstImage: Express.Multer.File;
+  secondImage: Express.Multer.File;
+}
