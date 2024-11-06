@@ -2,6 +2,9 @@
 export function decodeJWT(token: string) {
   try {
     const base64Url = token.split(".")[1];
+    if (!base64Url) {
+      throw new Error("Invalid token");
+    }
     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
     const jsonPayload = decodeURIComponent(
       atob(base64)
