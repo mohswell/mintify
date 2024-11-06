@@ -8,7 +8,7 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "start": "turbo run start --filter=api"
+    "start": "npm run start --workspace=api"
   },
   "devDependencies": {
     "postcss": "^8.4.47",
