@@ -87,15 +87,15 @@ export default function Login() {
                 </Link>
               </p> */}
           </div>
-
-          <p className="text-light-gray-7 font-light !leading-[22px] text-base max-w-[400px] w-full">
+  
+          <p className="text-light-gray-7 dark:text-light-gray-6 font-light !leading-[22px] text-base max-w-[400px] w-full">
             Submit more photos to unlock your creative potential with our
             photography community.
           </p>
         </div>
-
-        <div className="border-b-[0.5px] border-light-gray-5 w-full md:my-11 my-8" />
-
+  
+        <div className="border-b-[0.5px] border-light-gray-5 dark:border-dark-2 w-full md:my-11 my-8" />
+  
         <form
           onSubmit={handleLogin}
           className="max-w-lg w-full grid sm:grid-cols-2 grid-cols-1 gap-4 lg:px-0 px-4"
@@ -109,6 +109,7 @@ export default function Login() {
             value={details.email}
             onChange={handleChange}
             autoFocus
+            className="bg-white dark:bg-dark-2 border-light-gray-5 dark:border-dark-2"
           />
           <Input
             id="password"
@@ -118,22 +119,23 @@ export default function Login() {
             placeholder="Enter your password"
             value={details.password}
             onChange={handleChange}
+            className="bg-white dark:bg-dark-2 border-light-gray-5 dark:border-dark-2"
           />
-
+  
           <Button
             type="submit"
             loading={isLoading}
-            className="col-span-full"
+            className="col-span-full bg-dark dark:bg-white text-white dark:text-dark hover:bg-dark-darker dark:hover:bg-light-gray-1"
             disabled={!(validateEmail(details.email) && details.password)}
           >
             Get back in!
           </Button>
-
+  
           <p className="font-light text-base !leading-[22px] tracking-[-2%] col-span-full">
             Forgot your password?{" "}
             <Link
               href="/forgot-password"
-              className="underline underline-offset-2 font-medium"
+              className="underline underline-offset-2 font-medium hover:text-light-gray-7 dark:hover:text-light-gray-6"
             >
               Reset it
             </Link>
