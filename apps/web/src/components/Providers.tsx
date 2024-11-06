@@ -7,7 +7,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   
   return (
     <MantineProvider
-      colorScheme={theme as "light" | "dark"}
+      //colorScheme={theme as "light" | "dark"}
       defaultColorScheme={theme as "light" | "dark"}
       classNamesPrefix="stucruum"
       theme={{ 
