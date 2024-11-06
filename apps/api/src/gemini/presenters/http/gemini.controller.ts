@@ -4,7 +4,7 @@ import { ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { fileValidatorPipe } from 'src/constants/file-validator.pipe';
 import { GenerateTextDto } from 'src/dto/generate-text.dto';
 import { GeminiService } from 'src/gemini/application/gemini.service';
-import { GenAiResponse } from 'src/types/AnalyzeImage';
+import { GenAiResponse } from 'src/types/GenAiResponse';
 
 @Controller('gemini')
 export class GeminiController {
