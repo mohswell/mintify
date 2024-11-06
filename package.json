@@ -11,6 +11,7 @@
     "start": "npm run start --workspace=api"
   },
   "devDependencies": {
+    "@types/multer": "1.4.12",
     "postcss": "^8.4.47",
     "postcss-preset-mantine": "^1.17.0",
     "postcss-simple-vars": "^7.0.1",
@@ -27,9 +28,15 @@
     "packages/*"
   ],
   "dependencies": {
+    "@google/generative-ai": "0.21.0",
     "@mantine/core": "^7.13.4",
     "@mantine/hooks": "^7.13.4",
     "@mantine/notifications": "^7.13.4",
+    "@nestjs/swagger": "8.0.2",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.14.1",
+    "compression": "1.7.5",
+    "dotenv": "^16.4.5",
     "tailwindcss": "^3.4.14",
     "zod": "^3.23.8"
   }
