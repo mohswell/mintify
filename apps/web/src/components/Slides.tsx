@@ -26,7 +26,8 @@ const slides: Slide[] = [
 export default function Slides() {
   const [fadeOut, setFadeOut] = useState<boolean>(false);
   // const [slideOut, setSlideOut] = useState<boolean>(false);
-  const [activeSlide, setActiveSlide] = useState<Slide>(slides[0]);
+  const [activeSlide, setActiveSlide] = useState<Slide | undefined>(slides[0]);
+
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -41,7 +42,7 @@ export default function Slides() {
           // Change slide
           setActiveSlide((prevSlide) => {
             const currentIndex = slides.findIndex(
-              (slide) => slide.name === prevSlide.name,
+              (slide) => slide.name === (prevSlide?.name ?? "")
             );
             const nextIndex = (currentIndex + 1) % slides.length;
             return slides[nextIndex];
@@ -75,7 +76,7 @@ export default function Slides() {
           key={slide.name}
           className={`absolute inset-0 transition-opacity duration-1000 ease-out
           ${
-            slide.name === activeSlide.name
+            slide.name === (activeSlide?.name ?? "")
               ? fadeOut
                 ? "opacity-0"
                 : "opacity-100"
