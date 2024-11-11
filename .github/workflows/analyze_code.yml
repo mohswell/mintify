@@ -32,41 +32,40 @@ jobs:
       - name: Get Changed Files
         id: changed_files
         run: |
-          # Fetch all branches
           git fetch origin
-
-          # Get the base branch (usually main or master)
           BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
-          
-          # Get changed files between PR and base branch
           git diff --name-only --diff-filter=ACMRT origin/$BASE_BRANCH...HEAD > changed_files.txt
           
           echo "Changed files:"
           cat changed_files.txt
 
-      - name: Test API Call
-        run: |
-          # Test the API call with a sample file
-          sample_file="sample.js"
-          echo "console.log('Hello, World!');" > $sample_file
-          result=$(curl -X POST "${{ env.BASE_APP_URL }}/gemini/analyze-code" \
-            -H "Authorization: Bearer ${{ env.API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d "$(jq -n --arg code "$(cat $sample_file)" '{code: $code}')")
-          echo "API Response: $result"
+      # - name: Test API Call
+      #   run: |
+      #     # Test the API call with a sample file
+      #     sample_file="sample.js"
+      #     echo "console.log('Hello, World!');" > $sample_file
+      #     result=$(curl -X POST "${{ env.BASE_APP_URL }}/gemini/analyze-code" \
+      #       -H "Authorization: Bearer ${{ env.API_KEY }}" \
+      #       -H "Content-Type: application/json" \
+      #       -d "$(jq -n --arg code "$(cat $sample_file)" '{code: $code}')")
+      #     echo "API Response: $result"
 
-      - name: Run Deep Analysis
+      - name: Run Analysis on Changed Lines Only
         id: analyze_files
         run: |
           analysis_results=""
           while IFS= read -r file; do
             if [[ "$file" == *.js || "$file" == *.ts ]]; then
-              # Capture the analysis result
-              result=$(curl -X POST "${{ env.BASE_APP_URL }}/gemini/analyze-code" \
-                -H "Authorization: Bearer ${{ env.API_KEY }}" \
-                -H "Content-Type: application/json" \
-                -d "$(jq -n --arg code "$(cat $file)" '{code: $code}')")
-              analysis_results="$analysis_results\nFile: $file\n$result"
+              # Extract changed lines only
+              diff_output=$(git diff origin/$BASE_BRANCH...HEAD -- "$file" | grep '^[+-]' | grep -Ev '^(---|\+\+\+)' | sed 's/^[+-]//')
+              if [[ -n "$diff_output" ]]; then
+                # Capture the analysis result
+                result=$(curl -X POST "${{ env.BASE_APP_URL }}/gemini/analyze-code" \
+                  -H "Authorization: Bearer ${{ env.API_KEY }}" \
+                  -H "Content-Type: application/json" \
+                  -d "$(jq -n --arg code "$diff_output" '{code: $code}')")
+                analysis_results="$analysis_results\nFile: $file\n$result"
+              fi
             fi
           done < changed_files.txt
 
@@ -83,7 +82,6 @@ jobs:
           if [ -z "${{ env.ANALYSIS_RESULTS }}" ]; then
             echo "No analysis results to report."
           else
-            # Use the GitHub API to post a comment on the pull request
             curl -X POST \
               -H "Authorization: Bearer $GITHUB_TOKEN" \
               -H "Accept: application/vnd.github.v3+json" \
