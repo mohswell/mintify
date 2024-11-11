@@ -1,20 +1,10 @@
 import { Module } from '@nestjs/common';
-import { GeminiController } from './presenters/http/gemini.controller';
+import { GeminiProModelProvider, GeminiProVisionModelProvider } from './application/gemini.provider';
 import { GeminiService } from './application/gemini.service';
-import { env } from 'src/config/env.config';
+import { GeminiController } from './presenters/http/gemini.controller';
 
 @Module({
   controllers: [GeminiController],
-  providers: [
-    GeminiService,
-    {
-      provide: 'GEMINI_PRO_MODEL',
-      useValue: env.GEMINI.PRO_MODEL,
-    },
-    {
-      provide: 'GEMINI_PRO_VISION_MODEL',
-      useValue: env.GEMINI.PRO_VISION_MODEL,
-    },
-  ],
+  providers: [GeminiService, GeminiProModelProvider, GeminiProVisionModelProvider],
 })
 export class GeminiModule {}
