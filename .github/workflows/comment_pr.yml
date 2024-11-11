@@ -1,0 +1,23 @@
+name: Mintify Pull Request Feedback
+on:
+  pull_request:
+    types: [opened, synchronize]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up environment
+        run: source ./scripts/api/config/env.sh
+
+      - name: Post PR Comment
+        run: |
+          ./scripts/api/helpers/post_comment.sh "${{ github.event.pull_request.number }}" "Analysis complete. Check recommendations."
