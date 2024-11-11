@@ -19,13 +19,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Fetch all history
-          ref: ${{ github.event.pull_request.head.sha }}  # Checkout PR branch
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up environment
         run: |
-          echo "Setting up environment variables"
           echo "BASE_APP_URL=${{ secrets.BASE_APP_URL }}" >> $GITHUB_ENV
           echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
 
@@ -35,10 +34,8 @@ jobs:
           git fetch origin
           BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
           git diff --name-only --diff-filter=ACMRT origin/$BASE_BRANCH...HEAD > changed_files.txt
-          
           echo "Changed files:"
           cat changed_files.txt
-
       # - name: Test API Call
       #   run: |
       #     # Test the API call with a sample file
@@ -49,8 +46,7 @@ jobs:
       #       -H "Content-Type: application/json" \
       #       -d "$(jq -n --arg code "$(cat $sample_file)" '{code: $code}')")
       #     echo "API Response: $result"
-
-      - name: Run Analysis on Changed Lines Only
+      - name: Run Deep Analysis on Changed Lines Only
         id: analyze_files
         run: |
           analysis_results=""
@@ -58,12 +54,16 @@ jobs:
             if [[ "$file" == *.js || "$file" == *.ts ]]; then
               # Extract changed lines only
               diff_output=$(git diff origin/$BASE_BRANCH...HEAD -- "$file" | grep '^[+-]' | grep -Ev '^(---|\+\+\+)' | sed 's/^[+-]//')
+              
+              # Check if there are changed lines to analyze
               if [[ -n "$diff_output" ]]; then
-                # Capture the analysis result
-                result=$(curl -X POST "${{ env.BASE_APP_URL }}/gemini/analyze-code" \
+                # Send the changed lines as a JSON payload to the API endpoint
+                result=$(curl -s -X POST "${{ env.BASE_APP_URL }}/gemini/analyze-code" \
                   -H "Authorization: Bearer ${{ env.API_KEY }}" \
                   -H "Content-Type: application/json" \
                   -d "$(jq -n --arg code "$diff_output" '{code: $code}')")
+
+                # Add the result to analysis_results
                 analysis_results="$analysis_results\nFile: $file\n$result"
               fi
             fi
@@ -71,20 +71,21 @@ jobs:
 
           # Save the analysis results to be used in the comment
           echo "ANALYSIS_RESULTS<<EOF" >> $GITHUB_ENV
-          echo "$analysis_results" >> $GITHUB_ENV
+          echo -e "$analysis_results" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Comment on Pull Request with Analysis Results
         if: github.event.pull_request
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANALYSIS_RESULTS: ${{ env.ANALYSIS_RESULTS }}
         run: |
-          if [ -z "${{ env.ANALYSIS_RESULTS }}" ]; then
+          if [ -z "${ANALYSIS_RESULTS}" ]; then
             echo "No analysis results to report."
           else
             curl -X POST \
               -H "Authorization: Bearer $GITHUB_TOKEN" \
               -H "Accept: application/vnd.github.v3+json" \
-              -d "{\"body\": \"Code analysis results:\n${{ env.ANALYSIS_RESULTS }}\"}" \
+              -d "{\"body\": \"Code analysis results:\n${ANALYSIS_RESULTS}\"}" \
               "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
           fi
