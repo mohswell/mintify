@@ -64,11 +64,14 @@ jobs:
             if [[ "$file" == *.js || "$file" == *.ts ]]; then
               # Capture the analysis result
               echo "Analyzing file: $file"
-              result=$(curl -X POST "${{ env.BASE_APP_URL }}/gemini/analyze-code" \
+              response=$(curl -X POST "${{ env.BASE_APP_URL }}/gemini/analyze-code" \
                 -H "Authorization: Bearer ${{ env.API_KEY }}" \
                 -H "Content-Type: application/json" \
                 -d "$(jq -n --arg code "$(cat $file)" '{code: $code}')")
-              echo "Analysis result: $result"
+              
+              # Extract the "text" field from the API response
+              result=$(echo $response | jq -r '.text')
+              echo "API Response: $result"
               analysis_results="$analysis_results\nFile: $file\n$result"
             fi
           done < changed_files.txt
