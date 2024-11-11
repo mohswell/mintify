@@ -1,18 +1,32 @@
-import { Controller, Post, Body, UploadedFile, UseInterceptors, BadRequestException, UploadedFiles } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Post,
+  UploadedFile,
+  UploadedFiles,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
-import { ApiConsumes, ApiBody } from '@nestjs/swagger';
-import { fileValidatorPipe } from 'src/constants/file-validator.pipe';
-import { GenerateTextDto } from 'src/dto/generate-text.dto';
-import { GeminiService } from 'src/gemini/application/gemini.service';
-import { GenAiResponse } from 'src/types/GenAiResponse';
+import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import { GeminiService } from '~gemini/application/gemini.service';
+import { GenAiResponse } from '~gemini/domain/interface/response.interface';
+import { GenerateTextDto } from './dto/generate-text.dto';
+import { fileValidatorPipe } from './validation/file-validator.pipe';
 
+@ApiTags('Gemini')
 @Controller('gemini')
 export class GeminiController {
-  constructor(private readonly geminiService: GeminiService) {}
+  constructor(private service: GeminiService) {}
 
+  @ApiBody({
+    description: 'Prompt',
+    required: true,
+    type: GenerateTextDto,
+  })
   @Post('text')
-  generateText(@Body() dto: GenerateTextDto) {
-    return this.geminiService.generateText(dto.prompt);
+  generateText(@Body() dto: GenerateTextDto): Promise<GenAiResponse> {
+    return this.service.generateText(dto.prompt);
   }
 
   @ApiConsumes('multipart/form-data')
@@ -39,7 +53,7 @@ export class GeminiController {
     @UploadedFile(fileValidatorPipe)
     file: Express.Multer.File,
   ): Promise<GenAiResponse> {
-    return this.geminiService.generateTextFromMultiModal(dto.prompt, file);
+    return this.service.generateTextFromMultiModal(dto.prompt, file);
   }
 
   @ApiConsumes('multipart/form-data')
@@ -86,7 +100,6 @@ export class GeminiController {
     if (!files.second?.length) {
       throw new BadRequestException('The second image is missing');
     }
-    return this.geminiService.analyzeImages({ prompt: dto.prompt, firstImage: files.first[0], secondImage: files.second[0] });
+    return this.service.analyzeImages({ prompt: dto.prompt, firstImage: files.first[0], secondImage: files.second[0] });
   }
-
 }
