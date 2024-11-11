@@ -102,4 +102,14 @@ export class GeminiController {
     }
     return this.service.analyzeImages({ prompt: dto.prompt, firstImage: files.first[0], secondImage: files.second[0] });
   }
+
+  @ApiBody({
+    description: 'Analyze code',
+    required: true,
+    type: String,
+  })
+  @Post('analyze-code')
+  async analyzeCode(@Body() body: { code: string }): Promise<GenAiResponse> {
+    return this.service.analyzeCode(body.code);
+  }
 }
