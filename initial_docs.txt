@@ -1,0 +1,13 @@
+so the api has the:
+text.
+compare image.
+analyze image.
+
+my gh action should act on the file changes,
+
+1. send it to api to compare the commit details.
+2. reviews it, suggest improvement
+3. find bugs
+4. write tests
+5. approval/denied action by user should also reflect on the ai response
+
