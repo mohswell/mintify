@@ -22,7 +22,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up environment
-        run: source ./scripts/config/env.sh
+        run: echo "Setting up environment variables"
+        env:
+          BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
 
       - name: Get Changed Files
         id: changed_files
