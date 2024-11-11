@@ -19,6 +19,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
+          fetch-depth: 0  # Fetch all history
+          ref: ${{ github.event.pull_request.head.sha }}  # Checkout PR branch
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up environment
@@ -30,8 +32,17 @@ jobs:
       - name: Get Changed Files
         id: changed_files
         run: |
-          git fetch origin main
-          git diff --name-only --diff-filter=ACMRT origin/main...HEAD > changed_files.txt
+          # Fetch all branches
+          git fetch origin
+
+          # Get the base branch (usually main or master)
+          BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+          
+          # Get changed files between PR and base branch
+          git diff --name-only --diff-filter=ACMRT origin/$BASE_BRANCH...HEAD > changed_files.txt
+          
+          echo "Changed files:"
+          cat changed_files.txt
 
       - name: Run Deep Analysis
         id: analyze_files
@@ -46,13 +57,18 @@ jobs:
           done < changed_files.txt
 
           # Save the analysis results to be used in the comment
-          echo "analysis_results=$analysis_results" >> $GITHUB_ENV
+          echo "ANALYSIS_RESULTS<<EOF" >> $GITHUB_ENV
+          echo "$analysis_results" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Comment on Pull Request with Analysis Results
+        if: github.event.pull_request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Use the GitHub API to post a comment on the pull request
           curl -X POST \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
-            -d "{\"body\": \"Code analysis results:\n$analysis_results\"}" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/${{ github.event.pull_request.number }}/comments"
+            -d "{\"body\": \"Code analysis results:\n${{ env.ANALYSIS_RESULTS }}\"}" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
