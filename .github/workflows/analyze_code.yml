@@ -1,0 +1,46 @@
+name: Code Analysis
+on:
+  workflow_dispatch: {}
+
+permissions:
+  pull-requests: write
+
+jobs:
+  deep_analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up environment
+        run: source ./scripts/env/setup_env.sh
+
+      - name: Get Changed Files
+        id: changed_files
+        run: |
+          git fetch origin main
+          git diff --name-only origin/main...HEAD > changed_files.txt
+
+      - name: Run Deep Analysis
+        id: analyze_files
+        run: |
+          analysis_results=""
+          while IFS= read -r file; do
+            if [[ "$file" == *.js || "$file" == *.ts ]]; then
+              # Capture the analysis result
+              result=$(./scripts/api/controllers/analyze_code.sh "$file")
+              analysis_results="$analysis_results\nFile: $file\n$result"
+            fi
+          done < changed_files.txt
+
+          # Save the analysis results to be used in the comment
+          echo "analysis_results=$analysis_results" >> $GITHUB_ENV
+
+      - name: Comment on Pull Request with Analysis Results
+        run: |
+          # Use the GitHub API to post a comment on the pull request
+          curl -X POST \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d "{\"body\": \"Code analysis results:\n$analysis_results\"}" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/${{ github.event.pull_request.number }}/comments"
