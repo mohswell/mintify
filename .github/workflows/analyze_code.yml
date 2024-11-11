@@ -24,10 +24,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up environment
-        run: echo "Setting up environment variables"
-        env:
-          BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
-          API_KEY: ${{ secrets.API_KEY }}
+        run: |
+          echo "Setting up environment variables"
+          echo "BASE_APP_URL=${{ secrets.BASE_APP_URL }}" >> $GITHUB_ENV
+          echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
 
       - name: Get Changed Files
         id: changed_files
@@ -51,7 +51,10 @@ jobs:
           while IFS= read -r file; do
             if [[ "$file" == *.js || "$file" == *.ts ]]; then
               # Capture the analysis result
-              result=$(./scripts/api/controllers/analyze_code.sh "$file")
+              result=$(curl -X POST "${{ env.BASE_APP_URL }}/gemini/analyze-code" \
+                -H "Authorization: Bearer ${{ env.API_KEY }}" \
+                -H "Content-Type: application/json" \
+                -d "$(jq -n --arg code "$(cat $file)" '{code: $code}')")
               analysis_results="$analysis_results\nFile: $file\n$result"
             fi
           done < changed_files.txt
