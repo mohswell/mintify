@@ -1,48 +1,92 @@
 name: Code Analysis
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_review:
+    types: [submitted]
 
 permissions:
   pull-requests: write
+  statuses: write
+  contents: write
+  issues: write
 
 jobs:
-  deep_analyze:
+  mintify_analyze:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code
-        uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0  # Fetch all history
+          ref: ${{ github.event.pull_request.head.sha }} 
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up environment
-        run: source ./scripts/env/setup_env.sh
+        run: |
+          echo "Setting up environment variables"
+          echo "BASE_APP_URL=${{ secrets.BASE_APP_URL }}" >> $GITHUB_ENV
+          echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
 
       - name: Get Changed Files
         id: changed_files
         run: |
-          git fetch origin main
-          git diff --name-only origin/main...HEAD > changed_files.txt
+          # Fetch all branches
+          git fetch origin
 
-      - name: Run Deep Analysis
+          # Get the base branch (usually main or master)
+          BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+          
+          # Get changed files between PR and base branch
+          git diff --name-only --diff-filter=ACMRT origin/$BASE_BRANCH...HEAD > changed_files.txt
+          
+          echo "Changed files:"
+          cat changed_files.txt
+
+
+        - name: Test API Call
+          run: |
+            # Test the API call with a sample file
+            sample_file="sample.js"
+            echo "console.log('Hello, World!');" > $sample_file
+            result=$(curl -X POST "${{ env.BASE_APP_URL }}/gemini/analyze-code" \
+              -H "Authorization: Bearer ${{ env.API_KEY }}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -n --arg code "$(cat $sample_file)" '{code: $code}')")
+            echo "API Response: $result"
+
+     - name: Run Deep Analysis
         id: analyze_files
         run: |
           analysis_results=""
+          cat changed_files.txt
           while IFS= read -r file; do
             if [[ "$file" == *.js || "$file" == *.ts ]]; then
               # Capture the analysis result
-              result=$(./scripts/api/controllers/analyze_code.sh "$file")
+              echo "Analyzing file: $file"
+              result=$(curl -X POST "${{ env.BASE_APP_URL }}/gemini/analyze-code" \
+                -H "Authorization: Bearer ${{ env.API_KEY }}" \
+                -H "Content-Type: application/json" \
+                -d "$(jq -n --arg code "$(cat $file)" '{code: $code}')")
+              echo "API Response: $result"
               analysis_results="$analysis_results\nFile: $file\n$result"
             fi
           done < changed_files.txt
 
           # Save the analysis results to be used in the comment
-          echo "analysis_results=$analysis_results" >> $GITHUB_ENV
+          echo "ANALYSIS_RESULTS<<EOF" >> $GITHUB_ENV
+          echo "$analysis_results" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Comment on Pull Request with Analysis Results
+        if: github.event.pull_request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Use the GitHub API to post a comment on the pull request
           curl -X POST \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
-            -d "{\"body\": \"Code analysis results:\n$analysis_results\"}" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/${{ github.event.pull_request.number }}/comments"
+            -d "{\"body\": \"Code analysis results:\n${{ env.ANALYSIS_RESULTS }}\"}" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"

@@ -1,9 +1,10 @@
 name: Mintify Pull Request Feedback
 on:
-  pull_request:
-    types: [opened, synchronize]
-  pull_request_review:
-    types: [submitted]
+  # pull_request:
+  #   types: [opened, synchronize]
+  # pull_request_review:
+  #   types: [submitted]
+  workflow_dispatch:
 
 permissions:
   pull-requests: write
