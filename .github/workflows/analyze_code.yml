@@ -80,9 +80,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Use the GitHub API to post a comment on the pull request
-          curl -X POST \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            -d "{\"body\": \"Code analysis results:\n${{ env.ANALYSIS_RESULTS }}\"}" \
-            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
+          if [ -z "${{ env.ANALYSIS_RESULTS }}" ]; then
+            echo "No analysis results to report."
+          else
+            # Use the GitHub API to post a comment on the pull request
+            curl -X POST \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -d "{\"body\": \"Code analysis results:\n${{ env.ANALYSIS_RESULTS }}\"}" \
+              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
+          fi
