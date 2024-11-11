@@ -69,4 +69,27 @@ export class GeminiService {
       throw err;
     }
   }
+  async analyzeCode(code: string): Promise<GenAiResponse> {
+    try {
+      // Assuming 'createContent' is a helper function that formats the code for analysis.
+      const contents = createContent(`Analyze this code and find any issues or areas to improve:\n${code}`);
+
+      // Count tokens (if needed)
+      const { totalTokens } = await this.proModel.countTokens({ contents });
+      this.logger.log(`Tokens: ${JSON.stringify(totalTokens)}`);
+
+      // Generate the content (this could involve AI code analysis or some other logic)
+      const result = await this.proModel.generateContent({ contents });
+      const response = await result.response;
+      const text = response.text();
+
+      this.logger.log(`Analysis Result: ${text}`);
+      return { totalTokens, text };
+    } catch (err) {
+      if (err instanceof Error) {
+        throw new InternalServerErrorException(err.message, err.stack);
+      }
+      throw err;
+    }
+  }
 }
