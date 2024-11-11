@@ -36,6 +36,7 @@ jobs:
           git diff --name-only --diff-filter=ACMRT origin/$BASE_BRANCH...HEAD > changed_files.txt
           echo "Changed files:"
           cat changed_files.txt
+
       # - name: Test API Call
       #   run: |
       #     # Test the API call with a sample file
@@ -46,14 +47,15 @@ jobs:
       #       -H "Content-Type: application/json" \
       #       -d "$(jq -n --arg code "$(cat $sample_file)" '{code: $code}')")
       #     echo "API Response: $result"
+
       - name: Run Deep Analysis on Changed Lines Only
         id: analyze_files
         run: |
           analysis_results=""
           while IFS= read -r file; do
             if [[ "$file" == *.js || "$file" == *.ts ]]; then
-              # Extract changed lines only
-              diff_output=$(git diff origin/$BASE_BRANCH...HEAD -- "$file" | grep '^[+-]' | grep -Ev '^(---|\+\+\+)' | sed 's/^[+-]//')
+              # Extract only the modified lines using git diff with --unified=0 to remove context lines
+              diff_output=$(git diff origin/$BASE_BRANCH...HEAD -- "$file" --unified=0 | grep '^[+-]' | sed 's/^[+-]//')
               
               # Check if there are changed lines to analyze
               if [[ -n "$diff_output" ]]; then
