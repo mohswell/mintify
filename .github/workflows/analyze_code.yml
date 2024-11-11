@@ -44,6 +44,18 @@ jobs:
           echo "Changed files:"
           cat changed_files.txt
 
+
+        - name: Test API Call
+          run: |
+            # Test the API call with a sample file
+            sample_file="sample.js"
+            echo "console.log('Hello, World!');" > $sample_file
+            result=$(curl -X POST "${{ env.BASE_APP_URL }}/gemini/analyze-code" \
+              -H "Authorization: Bearer ${{ env.API_KEY }}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -n --arg code "$(cat $sample_file)" '{code: $code}')")
+            echo "API Response: $result"
+
       - name: Run Deep Analysis
         id: analyze_files
         run: |
