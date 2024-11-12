@@ -32,7 +32,7 @@ jobs:
         id: changed_files
         run: |
           git fetch origin
-          BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+          BASE_BRANCH="${{ github.base_ref }}"
           git diff --name-only --diff-filter=ACMRT origin/$BASE_BRANCH...HEAD > changed_files.txt
           echo "Changed files:"
           cat changed_files.txt
