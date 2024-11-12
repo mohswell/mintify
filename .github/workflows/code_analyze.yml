@@ -1,4 +1,5 @@
-name: Code Analysis and Review
+name: Code Analysis
+
 on:
   workflow_dispatch:
   pull_request:
@@ -13,74 +14,100 @@ permissions:
   statuses: write
   contents: write
   issues: write
-  checks: write
 
 jobs:
-  analyze_code:
-    if: |
-      github.event_name == 'pull_request' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request_review' && github.event.review.state == 'CHANGES_REQUESTED')
+  code_analysis:
     runs-on: ubuntu-latest
-    outputs:
-      analysis_id: ${{ steps.analyze.outputs.analysis_id }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Environment
-        run: bash .github/workflows/scripts/setup_env.sh
-        env:
-          BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
-          API_KEY: ${{ secrets.API_KEY }}
+      - name: Set up environment
+        run: |
+          echo "BASE_APP_URL=${{ secrets.BASE_APP_URL }}" >> $GITHUB_ENV
+          echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
 
-      - name: Analyze Code Changes
-        id: analyze
-        run: bash .github/workflows/scripts/analyze_code.sh
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      - name: Analyze Changed Files
+        id: analyze_files
+        run: |
+          echo "Analyzing changed files..."
 
-      - name: Create Check Run
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const fs = require('fs');
-            const analysis = JSON.parse(process.env.ANALYSIS_RESULTS);
-            
-            const check = await github.rest.checks.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              name: 'AI Code Review',
-              head_sha: context.payload.pull_request.head.sha,
-              status: 'completed',
-              conclusion: 'neutral',
-              output: {
-                title: 'AI Code Review Results',
-                summary: analysis.summary,
-                text: analysis.details,
-                annotations: analysis.annotations
-              }
-            });
+          # Fetch base branch for diff comparison
+          git fetch origin "${{ github.event.pull_request.base.ref }}"
 
-      - name: Update PR Status
-        run: bash .github/workflows/scripts/update_status.sh
+          analysis_results=""
 
-  handle_suggestion:
-    if: |
-      github.event_name == 'issue_comment' &&
-      contains(github.event.comment.body, '/accept-suggestion') ||
-      contains(github.event.comment.body, '/reject-suggestion')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Process Suggestion Action
-        run: bash .github/workflows/scripts/process_suggestion.sh
-        env:
-          COMMENT: ${{ github.event.comment.body }}
-          PR_NUMBER: ${{ github.event.issue.number }}
+          # List changed files
+          changed_files=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.sha }})
+
+          # Loop through each changed file
+          for file in $changed_files; do
+            if [[ "$file" == *.js || "$file" == *.ts || "$file" == *.yml || "$file" == *.md ]]; then
+              echo "Analyzing file: $file"
+
+              # Capture diff output
+              diff_output=$(git diff origin/${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.sha }} -- "$file")
+
+              if [ -n "$diff_output" ]; then
+                markdown_diff="### File: \`$file\`\n\n\`\`\`diff\n${diff_output}\n\`\`\`"
+                escaped_diff=$(echo "$markdown_diff" | jq -sR .)
+
+                # Send diff to API
+                result=$(curl -s -X POST "${{ env.BASE_APP_URL }}/gemini/analyze-code" \
+                  -H "Authorization: Bearer ${{ env.API_KEY }}" \
+                  -H "Content-Type: application/json" \
+                  -d "{\"code\": ${escaped_diff}}")
+
+                if [ -n "$result" ]; then
+                  analysis_results="${analysis_results}\n## Analysis for \`$file\`\n${result}"
+                fi
+              fi
+            fi
+          done
+
+          # Save results for later steps
+          echo "ANALYSIS_RESULTS<<EOF" >> $GITHUB_ENV
+          echo -e "$analysis_results" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Comment on Pull Request
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Posting comment on PR..."
+
+          COMMENT_BODY=$(cat << EOF
+          # Code Analysis Report
+
+          ${ANALYSIS_RESULTS}
+
+          ---
+
+          [Approve](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}/#approve) | [Reject](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}/#reject)
+          *Generated by AI Code Analysis*
+          EOF
+          )
+
+          # Post the comment
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d "{\"body\": $(echo "$COMMENT_BODY" | jq -sR)}" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
+
+      - name: Handle Feedback
+        if: github.event.comment.body == '/approve' || github.event.comment.body == '/reject'
+        run: |
+          if [[ "${{ github.event.comment.body }}" == '/approve' ]]; then
+            echo "Applying AI-generated code suggestions..."
+
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git add .
+            git commit -m "Apply AI code suggestions"
+            git push
+          elif [[ "${{ github.event.comment.body }}" == '/reject' ]]; then
+            echo "Suggestion rejected; no changes applied."
+          fi
