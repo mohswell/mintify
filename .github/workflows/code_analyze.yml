@@ -33,6 +33,7 @@ jobs:
         run: bash .github/workflows/scripts/post_comment.sh
 
   handle_feedback:
+    needs: mintify_analyze
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
