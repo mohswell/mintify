@@ -30,7 +30,7 @@ jobs:
           echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
 
       - name: Analyze Changed Files
-        run: bash .github/scripts/analyze_files.sh
+        run: bash .github/workflows/scripts/analyze_files.sh
         env:
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
           API_KEY: ${{ env.API_KEY }}
@@ -38,7 +38,7 @@ jobs:
           GITHUB_HEAD_REF: ${{ github.event.pull_request.head.sha }}
 
       - name: Post Analysis Comment with Feedback Options
-        run: bash .github/scripts/post_comment.sh
+        run: bash .github/workflows/scripts/post_comment.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ANALYSIS_RESULTS: ${{ env.ANALYSIS_RESULTS }}
@@ -48,7 +48,7 @@ jobs:
 
       - name: Process Feedback
         if: github.event.comment.body == '/approve' || github.event.comment.body == '/reject'
-        run: bash .github/scripts/process_feedback.sh
+        run: bash .github/workflows/scripts/process_feedback.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMMENT_BODY: ${{ github.event.comment.body }}
