@@ -20,7 +20,9 @@ for file in $changed_files; do
     
     # Format for API
     markdown_diff="### File: \`$file\`\n\n\`\`\`diff\n${diff_output}\n\`\`\`"
+    echo "Markdown diff: $markdown_diff"
     escaped_diff=$(echo "$markdown_diff" | jq -sR .)
+    echo "Diff: $escaped_diff"
     
     # Get AI analysis
     result=$(curl -s -X POST "$BASE_APP_URL/gemini/analyze-code" \
@@ -32,6 +34,8 @@ for file in $changed_files; do
     if [ -n "$result" ]; then
       # Store result
       analysis_results+=("$result")
+
+      echo "Analysis result: $result"
       
       # Extract actionable suggestions
       suggestion_id=$(uuidgen)
