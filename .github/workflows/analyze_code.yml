@@ -53,7 +53,7 @@ jobs:
         run: |
           analysis_results=""
           while IFS= read -r file; do
-            if [[ "$file" == *.js || "$file" == *.ts || "$file" == *.yml || "$file" == *.md]]; then
+            if [[ "$file" == *.js || "$file" == *.ts || "$file" == *.yml || "$file" == *.md ]]; then
               # Extract only the modified lines using git diff with --unified=0 to remove context lines
               diff_output=$(git diff origin/$BASE_BRANCH...HEAD -- "$file" --unified=0 | grep '^[+-]' | sed 's/^[+-]//')
               
