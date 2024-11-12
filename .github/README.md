@@ -1,2 +1,7 @@
-Mintify Project AI 
-console.log("Hello World")
+## Using this App
+
+Run the following command:
+
+```sh
+npx create-turbo@latest
+```
