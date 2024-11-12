@@ -1,1 +1,2 @@
-Mintify Project
+Mintify Project AI 
+console.log("Hello World")
