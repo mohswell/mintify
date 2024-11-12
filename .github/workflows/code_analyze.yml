@@ -1,0 +1,86 @@
+name: Code Analysis and Review
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_review:
+    types: [submitted]
+  issue_comment:
+    types: [created]
+
+permissions:
+  pull-requests: write
+  statuses: write
+  contents: write
+  issues: write
+  checks: write
+
+jobs:
+  analyze_code:
+    if: |
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'CHANGES_REQUESTED')
+    runs-on: ubuntu-latest
+    outputs:
+      analysis_id: ${{ steps.analyze.outputs.analysis_id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Environment
+        run: ./scripts/setup_env.sh
+        env:
+          BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+
+      - name: Analyze Code Changes
+        id: analyze
+        run: ./scripts/analyze_code.sh
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
+      - name: Create Check Run
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const analysis = JSON.parse(process.env.ANALYSIS_RESULTS);
+            
+            const check = await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'AI Code Review',
+              head_sha: context.payload.pull_request.head.sha,
+              status: 'completed',
+              conclusion: 'neutral',
+              output: {
+                title: 'AI Code Review Results',
+                summary: analysis.summary,
+                text: analysis.details,
+                annotations: analysis.annotations
+              }
+            });
+
+      - name: Update PR Status
+        run: ./scripts/update_status.sh
+
+  handle_suggestion:
+    if: |
+      github.event_name == 'issue_comment' &&
+      contains(github.event.comment.body, '/accept-suggestion') ||
+      contains(github.event.comment.body, '/reject-suggestion')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process Suggestion Action
+        run: ./scripts/process_suggestion.sh
+        env:
+          COMMENT: ${{ github.event.comment.body }}
+          PR_NUMBER: ${{ github.event.issue.number }}
