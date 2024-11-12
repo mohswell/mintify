@@ -1,1 +1,1 @@
-Mintify Project
+Mintify Project AI 
