@@ -12,7 +12,7 @@ analysis_results=()
 suggestions=()
 
 for file in $changed_files; do
-  if [[ "$file" =~ \.(js|ts|yml|md)$ ]]; then
+  if [[ "$file" =~ \.(js|ts|yml|md|sh)$ ]]; then
     echo "Analyzing file: $file"
     
     # Get file diff
