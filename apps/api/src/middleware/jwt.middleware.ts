@@ -16,7 +16,7 @@ export class JwtMiddleware implements NestMiddleware {
             next(); // Proceed to the next middleware or route handler
         } catch (err) {
             console.error('JWT verification failed:', err);
-            throw new UnauthorizedException(err.message);
+            throw new UnauthorizedException((err as Error).message);
         }
     }
 }
