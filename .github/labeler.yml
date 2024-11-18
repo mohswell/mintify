@@ -1,0 +1,223 @@
+# Labeler configuration file for a Next.js project
+# Reference: https://github.com/actions/labeler
+
+# TypeScript files
+# typescript:
+#   - '**/*.ts'
+#   - '**/*.tsx'
+
+# # JavaScript files
+# javascript:
+#   - '**/*.js'
+#   - '**/*.jsx'
+#   - '**/*.mjs'
+
+### Frontend Labels
+# CSS and SCSS files
+css:
+  - '**/*.css'
+  - '**/*.scss'
+
+# Styled Components files
+styled-components:
+  - '**/*.styled.js'
+  - '**/*.styled.ts'
+  - '**/*.styled.tsx'
+
+# Pages (Next.js pages router)
+pages:
+  - 'pages/**/*.{ts,tsx,js,jsx}'
+
+# Components
+components:
+  - 'components/**/*.{ts,tsx,js,jsx}'
+
+# Styles (Global styles and CSS modules)
+styles:
+  - 'styles/**/*.{css,scss}'
+
+# Public assets (Images, fonts, etc.)
+public-assets:
+  - 'public/**/*.{png,jpg,jpeg,svg,gif,ico,webp}'
+  - 'public/**/*.{ttf,woff,woff2,eot}'
+
+# API Routes (Next.js API directory)
+api:
+  - 'pages/api/**/*.{ts,tsx,js,jsx}'
+
+# Tests (Unit, integration, and end-to-end tests)
+tests:
+  - 'tests/**/*.{ts,tsx,js,jsx}'
+  - '**/__tests__/**/*.{ts,tsx,js,jsx}'
+  - '**/__mocks__/**/*.{ts,tsx,js,jsx}'
+
+# Configuration files (Project settings and configuration)
+config:
+  - '.github/**/*.yml'
+  - '.github/**/*.yaml'
+  - 'config/**/*.json'
+  - 'config/**/*.yaml'
+  - 'config/**/*.yml'
+  - 'next.config.js'
+  - 'tsconfig.json'
+  - 'babel.config.js'
+  - '.eslintrc.js'
+  - '.eslintignore'
+  - '.prettierrc'
+  - '.prettierignore'
+  - 'jest.config.js'
+  - '.gitignore'
+  - '.npmrc'
+
+# Documentation files
+documentation:
+  - 'docs/**/*.md'
+  - 'README.md'
+  - 'CONTRIBUTING.md'
+  - 'CHANGELOG.md'
+  - 'LICENSE'
+  - 'CODE_OF_CONDUCT.md'
+
+# Package files (Dependencies and lock files)
+package:
+  - 'package.json'
+  - 'package-lock.json'
+  - 'yarn.lock'
+  - 'pnpm-lock.yaml'
+
+# Multiple labels for frontend-related files
+frontend:
+  - 'pages/**/*.{ts,tsx,js,jsx}'
+  - 'components/**/*.{ts,tsx,js,jsx}'
+  - 'styles/**/*.{css,scss}'
+  - 'public/**/*.{png,jpg,jpeg,svg,gif,ico,webp}'
+  - 'hooks/**/*.{ts,tsx,js,jsx}'
+  - 'contexts/**/*.{ts,tsx,js,jsx}'
+  - 'layouts/**/*.{ts,tsx,js,jsx}'
+  - 'stores/**/*.{ts.tsx,js,jsx}'
+
+# Backend / API-related files
+backend:
+  - 'pages/api/**/*.{ts,tsx,js,jsx}'
+  - 'services/**/*.{ts,js}'
+  - 'middleware/**/*.{ts,js}'
+
+types:
+  - 'types/**/*.{ts,d.ts}'
+
+actions:
+  - 'actions/**/*.{ts,d.ts}'
+
+constants:
+  - 'constants/**/*.{ts,js}'
+
+contexts:
+  - 'contexts/**/*.{ts,tsx,js,jsx}'
+
+utils:
+  - 'utils/**/*.{ts,tsx,js,jsx}'
+
+lib:
+  - 'lib/**/*.{ts,tsx,js,jsx}'
+
+layouts:
+  - 'layouts/**/*.{ts,tsx,js,jsx}'
+
+
+
+#### Backend Labels
+# Labeler configuration file for a NestJS project
+# Reference: https://github.com/actions/labeler
+
+# TypeScript files
+# typescript:
+#   - '**/*.ts'
+
+# CSS and SCSS files (if NestJS app includes frontend assets or styles)
+css:
+  - '**/*.css'
+  - '**/*.scss'
+
+# Controllers (NestJS controllers)
+controllers:
+  - 'src/**/*.controller.ts'
+
+# Services (NestJS services)
+services:
+  - 'src/**/*.service.ts'
+
+# Modules (NestJS modules)
+modules:
+  - 'src/**/*.module.ts'
+
+# DTOs (Data Transfer Objects)
+dtos:
+  - 'src/**/*.dto.ts'
+
+# Middleware (NestJS middleware)
+middleware:
+  - 'src/middleware/**/*.{ts,js}'
+
+# Guards (NestJS guards)
+guards:
+  - 'src/guards/**/*.{ts,js}'
+
+# Interceptors (NestJS interceptors)
+interceptors:
+  - 'src/interceptors/**/*.{ts,js}'
+
+# Pipes (NestJS pipes)
+pipes:
+  - 'src/pipes/**/*.{ts,js}'
+
+# Decorators (NestJS custom decorators)
+decorators:
+  - 'src/decorators/**/*.{ts,js}'
+
+# Configuration files (Project settings and configuration)
+config:
+  - '.github/**/*.yml'
+  - '.github/**/*.yaml'
+  - 'config/**/*.json'
+  - 'config/**/*.yaml'
+  - 'config/**/*.yml'
+  - 'nest-cli.json'
+  - 'tsconfig.json'
+  - '.eslintrc.js'
+  - '.eslintignore'
+  - '.prettierrc'
+  - '.prettierignore'
+  - 'jest.config.js'
+  - '.gitignore'
+  - '.npmrc'
+  - '.vercel.json'
+
+# Documentation files
+documentation:
+  - 'docs/**/*.md'
+  - 'README.md'
+  - 'CONTRIBUTING.md'
+  - 'CHANGELOG.md'
+  - 'LICENSE'
+  - 'CODE_OF_CONDUCT.md'
+
+# Package files (Dependencies and lock files)
+package:
+  - 'package.json'
+  - 'package-lock.json'
+  - 'yarn.lock'
+  - 'pnpm-lock.yaml'
+
+# Tests (Unit, integration, and end-to-end tests)
+tests:
+  - 'test/**/*.{ts,js}'
+  - '**/__tests__/**/*.{ts,js}'
+  - '**/__mocks__/**/*.{ts,js}'
+
+# Utils (Utility files)
+utils:
+  - 'src/utils/**/*.{ts,js}'
+
+# Constants
+constants:
+  - 'src/constants/**/*.{ts,js}'

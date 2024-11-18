@@ -1,0 +1,57 @@
+name: Prevent Unauthorized Access Error for Github - Use mohswell as authorized Committer
+
+on:
+  # pull_request:
+  #   types: [opened, synchronize]
+  # push:
+  #   branches:
+  #     - main
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+  statuses: write
+  contents: write
+  issues: write
+
+jobs:
+  enforce-email:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get commit email
+        id: get_email
+        run: |
+          email=$(git log -1 --pretty=format:'%ae')
+          echo "Commit email: $email"
+          echo "email=$email" >> $GITHUB_ENV
+
+      - name: Check email and perform dummy commit if necessary
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EMAIL: ${{ env.email }}
+        run: |
+          if [ "${{ github.event.pull_request.head.user.email || github.event.head_commit.author.email }}" != "mohammedabdy10@gmail.com" ]; then
+            echo "Email does not match. Performing dummy commit."
+            git config user.name "mohswell"
+            git config user.email "mohammedabdy10@gmail.com" 
+
+            # For pull requests, use the head branch
+            if [ "${{ github.event_name }}" == "pull_request" ]; then
+              git checkout ${{ github.head_ref }}
+              target_branch="${{ github.head_ref }}"
+            else
+              target_branch="${GITHUB_REF#refs/heads/}"
+            fi
+            
+            echo "Dummy commit at $(date)" > dummyfile.txt
+            git add dummyfile.txt
+            git commit -m "Hello World!"
+            git push origin $target_branch
+          else
+            echo "Email matches. No action needed."
+          fi
