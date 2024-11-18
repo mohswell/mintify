@@ -1,6 +1,6 @@
 import { API_URL } from "@/lib/env";
 import { useAuthStore } from "@/stores/auth";
-import { LoginDetails, NewSubmission, SignupDetails, Token } from "@/types";
+import { LoginDetails, Token, FetchUsersResponse, FetchImageResponse } from "@/types";
 
 export const verifyEmailToken = async (token: Token) => {
   try {
@@ -26,7 +26,7 @@ export const verifyEmailToken = async (token: Token) => {
 };
 
 export const login = async (details: LoginDetails) => {
-  const res = await fetch(`${API_URL}/auth/login`, {
+  const res = await fetch(`${API_URL}/auth/admin`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -38,81 +38,6 @@ export const login = async (details: LoginDetails) => {
 
   return { ok: res.ok, data };
 };
-
-export const signup = async (details: SignupDetails) => {
-  const res = await fetch(`${API_URL}/auth/signup`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(details),
-  });
-
-  const data = await res.json();
-
-  return { ok: res.ok, data };
-};
-
-export const forgotPassword = async (email: string) => {
-  const res = await fetch(`${API_URL}/auth/forgot-password`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email }),
-  });
-
-  const data = await res.json();
-
-  return { ok: res.ok, data };
-};
-
-export const resetPassword = async (token: string, newPassword: string) => {
-  try {
-    // Send a request to verify the token and update the password
-    const res = await fetch(`${API_URL}/auth/reset-password`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        token,
-        password: newPassword,
-      }),
-    });
-
-    const data = await res.json();
-
-    // Return response based on API's success
-    if (res.ok && data.success) {
-      return { ok: true, message: "Password reset successful!" };
-    } else {
-      return { ok: false, message: data.message || "Failed to reset password." };
-    }
-  } catch (error) {
-    console.error("Error resetting password:", error);
-    return { ok: false, message: "An error occurred while resetting the password." };
-  }
-};
-
-export const verifyPasswordToken = async (token: Token) => {
-  try {
-    const res = await fetch(`${API_URL}/auth/verify-token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ token }),
-    });
-
-    const data = await res.json();
-    return { ok: data.valid, message: data.valid ? "Token is valid" : data.error };
-  } catch (error) {
-    console.error("Error verifying token:", error);
-    return { ok: false, message: "An error occurred while verifying the token" };
-  }
-};
-
 
 export const getStats = async () => {
   const user = useAuthStore.getState().user;
@@ -131,61 +56,29 @@ export const getStats = async () => {
   return { ok: res.ok, data };
 };
 
-export const getSubmissions = async () => {
-  const user = useAuthStore.getState().user;
+export const fetchAllUsers = async (): Promise<FetchUsersResponse> => {
   const token = useAuthStore.getState().token;
 
-  const res = await fetch(`${API_URL}/submissions/images/${user?.id}`, {
-    method: "GET",
+  const res = await fetch(`${API_URL}/ruumers/all`, {
+    method: 'GET',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
   });
 
-  const data = await res.json();
+  const responseData = await res.json();
 
-  return { ok: res.ok, data };
+  return {
+    ok: res.ok,
+    data: {
+      message: responseData.message,
+      ruumers: responseData.ruumers
+    }
+  };
 };
 
-export const uploadImage = async (formData: FormData) => {
-  const token = useAuthStore.getState().token;
-
-  const res = await fetch(`${API_URL}/images/upload`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
-  });
-
-  const data = await res.json();
-
-  return { ok: res.ok, data };
-};
-
-export const createSubmission = async (details: NewSubmission) => {
-  const token = useAuthStore.getState().token;
-  const user = useAuthStore.getState().user;
-
-  const res = await fetch(`${API_URL}/images/submissions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      ...details,
-      user_id: (user?.id as number).toString(),
-    }),
-  });
-
-  const data = await res.json();
-
-  return { ok: res.ok, data };
-};
-
-export const fetchAllImages  = async () => {
+export const fetchAllImages  = async (): Promise<FetchImageResponse> => {
   const token = useAuthStore.getState().token;
 
   const res = await fetch(`${API_URL}/images/all`, {
@@ -198,5 +91,37 @@ export const fetchAllImages  = async () => {
 
   const data = await res.json();
 
-  return { ok: res.ok, data };
+  return {
+    ok: res.ok,
+    data: {
+      message: data.message,
+      images: data.images
+    }
+  };
+};
+
+export const sendInviteEmail = async (email: string) => {
+  try {
+      // const baseUrl = process.env.NEXT_PUBLIC_BASE_APP_URL;
+      // const bearerToken = process.env.NEXT_PUBLIC_INVITE_BEARER_TOKEN;
+      const bearerToken = useAuthStore.getState().token;
+      const response = await fetch(`${API_URL}/invite/user`, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${bearerToken}`,
+          },
+          body: JSON.stringify({ email }), // Just sending the email in the body
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+          throw new Error(result.message || 'Failed to send invite');
+      }
+
+      return result.message;
+  } catch (error: any) {
+      throw new Error(error.message || 'An error occurred while sending the invite');
+  }
 };
