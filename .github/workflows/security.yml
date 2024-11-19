@@ -16,12 +16,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: 'npm'
@@ -36,18 +36,18 @@ jobs:
 
       # Initialize CodeQL
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: javascript  # This covers both JavaScript and TypeScript
           queries: security-and-quality  # Add security and quality queries
 
       # Autobuild (attempts to build any compiled languages)
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v2
+        uses: github/codeql-action/autobuild@v3
 
       # Run CodeQL Analysis
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
         with:
           category: "/language:javascript,/language:typescript" 
           ram: '6000'  # Increase RAM for larger codebases
@@ -67,7 +67,7 @@ jobs:
 
       # Upload security results
       - name: Upload security results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: success() || failure()
         with:
           sarif_file: results.sarif
@@ -85,10 +85,10 @@ jobs:
 
 #     steps:
 #       - name: Checkout Code
-#         uses: actions/checkout@v3
+#         uses: actions/checkout@v4
 
 #       - name: Setup Node.js
-#         uses: actions/setup-node@v3
+#         uses: actions/setup-node@v4
 #         with:
 #           node-version: 18
 
