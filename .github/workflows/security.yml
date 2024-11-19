@@ -38,7 +38,8 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v2
         with:
-          languages: javascript
+          languages: javascript  # This covers both JavaScript and TypeScript
+          queries: security-and-quality  # Add security and quality queries
 
       # Autobuild (attempts to build any compiled languages)
       - name: Autobuild
@@ -48,7 +49,8 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2
         with:
-          category: "/language:javascript"
+          category: "/language:javascript,/language:typescript" 
+          ram: '6000'  # Increase RAM for larger codebases
 
       # Dependency Review using official GitHub action
       - name: Dependency Review
@@ -63,13 +65,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Optional: Upload security results
+      # Upload security results
       - name: Upload security results
         uses: github/codeql-action/upload-sarif@v2
         if: success() || failure()
         with:
           sarif_file: results.sarif
-
 
 # name: Security Audit & Dependency Check
 
