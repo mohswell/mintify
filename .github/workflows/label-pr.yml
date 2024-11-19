@@ -25,6 +25,8 @@ jobs:
         uses: actions/labeler@v5
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: false
           
       # Add labels based on commit messages using a pre-built action
       # - name: Add labels based on commit messages
