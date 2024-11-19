@@ -1,4 +1,4 @@
-import { getSupabaseClient } from 'src/config/supabase';
+import { SupabaseDBClient } from '~utils';
 import * as jwt from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
 
@@ -10,7 +10,7 @@ export async function verifyToken(token: string, configService: ConfigService) {
     try {
         const decoded = jwt.verify(token, configService.get<string>('JWT_SECRET') || 'secret_key') as any;
 
-        const supabase = getSupabaseClient(configService); // Get Supabase client
+        const supabase = SupabaseDBClient(configService); // Get Supabase client
         const { data: session, error } = await supabase
             .from('sessions')
             .select('*')
