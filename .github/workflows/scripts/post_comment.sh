@@ -2,6 +2,9 @@
 
 echo "Posting comment on PR..."
 
+# Use jq to properly escape the analysis results
+ESCAPED_RESULTS=$(echo -e "${ANALYSIS_RESULTS}" | jq -sR .)
+
 COMMENT_BODY=$(cat << EOF
 # Code Analysis Report
 
@@ -15,9 +18,12 @@ ${ANALYSIS_RESULTS}
 EOF
 )
 
+# Properly escape the entire comment body
+ESCAPED_COMMENT=$(echo "$COMMENT_BODY" | jq -sR .)
+
 # Post the comment
 curl -X POST \
   -H "Authorization: Bearer ${GITHUB_TOKEN}" \
   -H "Accept: application/vnd.github.v3+json" \
-  -d "{\"body\": $(echo "$COMMENT_BODY" | jq -sR)}" \
+  -d "{\"body\": ${ESCAPED_COMMENT}}" \
   "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
