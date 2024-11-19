@@ -36,8 +36,7 @@ jobs:
         id: fetch_sha
         run: |
           echo "Fetching last analyzed SHA..."
-          last_sha=$(gh api repos/${{ github.repository }}/commits --per-page=1 \
-            --jq '.[0].sha')
+          last_sha=$(gh api repos/${{ github.repository }}/commits -q '.[0].sha')
           echo "LAST_ANALYZED_SHA=${last_sha}" >> $GITHUB_ENV
 
       - name: Analyze Changed Files Incrementally
