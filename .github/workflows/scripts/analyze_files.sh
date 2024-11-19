@@ -4,17 +4,20 @@ set -e
 
 echo "Analyzing changed files..."
 
-# Use GitHub-provided refs instead of relying on local branch names
-base_sha="${GITHUB_BASE_REF:-${{ github.event.pull_request.base.sha }}}"
-head_sha="${GITHUB_HEAD_REF:-${{ github.event.pull_request.head.sha }}}"
+# Use GitHub-provided environment variables
+base_sha="${GITHUB_BASE_REF:-${{ github.base_ref }}}"
+head_sha="${GITHUB_HEAD_REF:-${{ github.head_ref }}}"
 
-# Ensure base and head SHAs are valid
-if [ -z "$base_sha" ] || [ -z "$head_sha" ]; then
-  echo "Error: Base or Head SHA is missing"
-  exit 1
+# If branch refs are not available, use full SHA
+if [ -z "$base_sha" ]; then
+  base_sha="${{ github.event.pull_request.base.sha }}"
 fi
 
-# Fetch the specific SHAs to ensure they exist
+if [ -z "$head_sha" ]; then
+  head_sha="${{ github.event.pull_request.head.sha }}"
+fi
+
+# Fetch the specific refs
 git fetch origin "$base_sha" "$head_sha"
 
 # Ensure CHANGED_FILES is properly handled
@@ -33,7 +36,7 @@ while IFS= read -r file; do
   if [[ "$file" =~ \.(js|ts|yml|md)$ ]]; then
     echo "Analyzing file: $file"
 
-    # Use the specific SHAs for diff
+    # Use git diff with explicit SHAs
     diff_output=$(git diff "$base_sha" "$head_sha" -- "$file")
 
     if [ -n "$diff_output" ]; then

@@ -44,6 +44,8 @@ jobs:
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
           API_KEY: ${{ env.API_KEY }}
           CHANGED_FILES: ${{ steps.changed_files.outputs.files }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: bash .github/workflows/scripts/analyze_files.sh
         
       - name: Post Analysis Comment
