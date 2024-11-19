@@ -22,7 +22,7 @@ jobs:
 
       # Automatically apply labels based on file changes using labeler.yml
       - name: Label PR based on file changes
-        uses: actions/labeler@v4
+        uses: actions/labeler@v5
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           
