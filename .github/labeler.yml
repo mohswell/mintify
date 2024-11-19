@@ -13,9 +13,9 @@
 #   - '**/*.jsx'
 
 # Styles (CSS, SCSS)
-css:
-  - '**/*.css'
-  - '**/*.scss'
+# css:
+#   - '**/*.css'
+#   - '**/*.scss'
 
 # Configuration files
 config:
