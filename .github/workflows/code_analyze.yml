@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   code_analysis:
+    if: github.event_name != 'issue_comment'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -33,7 +34,6 @@ jobs:
       - name: Get Changed Files
         id: changed_files
         run: |
-          # Use git diff with only the current PR's changes
           CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
           FILTERED_FILES=$(echo "$CHANGED_FILES" | grep -E '\.(js|ts|yml|md)$' || true)
           ESCAPED_FILES=$(echo "$FILTERED_FILES" | jq -sR .)
@@ -55,17 +55,7 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: bash .github/workflows/scripts/post_comment.sh
 
-      - name: Process Feedback
-        if: github.event.comment && (github.event.comment.body == '/approve' || github.event.comment.body == '/reject')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMMENT_BODY: ${{ github.event.comment.body }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.issue.number }}
-        run: bash .github/workflows/scripts/process_feedback.sh
-
-
-  feedback_and_tests:
+  feedback_processing:
     if: github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
     steps:
