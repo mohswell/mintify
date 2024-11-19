@@ -4,46 +4,48 @@ set -e
 
 echo "Analyzing changed files..."
 
-# Ensure CHANGED_FILES is properly handled
+# More robust file parsing
 if [ -z "$CHANGED_FILES" ]; then
   echo "No changed files detected"
   exit 0
 fi
 
-# Attempt to parse JSON-escaped files list
-parsed_files=$(echo "$CHANGED_FILES" | jq -r '.[]' 2>/dev/null || echo "$CHANGED_FILES")
+# Use jq to safely parse files
+parsed_files=$(echo "$CHANGED_FILES" | jq -r 'if type=="array" then .[] else . end' 2>/dev/null)
 
 analysis_results=""
 
-# Loop through each changed file
-for file in $parsed_files; do
+# Improved file loop
+while IFS= read -r file; do
   if [[ "$file" =~ \.(js|ts|yml|md)$ ]]; then
     echo "Analyzing file: $file"
 
     # Capture diff output
-    diff_output=$(git diff origin/"${GITHUB_BASE_REF}" "${GITHUB_HEAD_REF}" -- "$file")
+    diff_output=$(git diff --unified=0 origin/"${GITHUB_BASE_REF}" "${GITHUB_HEAD_REF}" -- "$file")
 
     if [ -n "$diff_output" ]; then
-      # Escape markdown diff
-      markdown_diff="### File: \`$file\`\n\n\`\`\`diff\n${diff_output}\n\`\`\`"
-      escaped_diff=$(echo "$markdown_diff" | jq -sR .)
+      # Escape diff for JSON
+      escaped_diff=$(echo "$diff_output" | jq -sR .)
 
-      # Send diff to API
+      # Send diff to API with error handling
       result=$(curl -s -X POST "${BASE_APP_URL}/gemini/analyze-code" \
         -H "Authorization: Bearer ${API_KEY}" \
         -H "Content-Type: application/json" \
-        -d "{\"code\": ${escaped_diff}}")
+        -d "{\"code\": ${escaped_diff}}" || echo '')
 
+      # Check if result is not empty
       if [ -n "$result" ]; then
-        analysis_results="${analysis_results}\n## Analysis for \`$file\`\n${result}"
+        # Escape result for environment variable
+        escaped_result=$(echo "$result" | jq -sR .)
+        analysis_results="${analysis_results}\n## Analysis for \`$file\`\n${escaped_result}"
       fi
     fi
   fi
-done
+done <<< "$parsed_files"
 
 # Save results for comment script
 if [ -n "$analysis_results" ]; then
   echo "ANALYSIS_RESULTS<<EOF" >> "$GITHUB_ENV"
-  echo -e "$analysis_results" >> "$GITHUB_ENV"
+  echo -e "$analysis_results" | jq -sR . >> "$GITHUB_ENV"
   echo "EOF" >> "$GITHUB_ENV"
 fi

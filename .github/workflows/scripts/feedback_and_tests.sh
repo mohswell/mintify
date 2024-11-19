@@ -64,7 +64,15 @@ Changes have not been applied. Please review the feedback and make necessary adj
         response=$(curl -s -X POST "${BASE_APP_URL}/gemini/generate-tests" \
           -H "Authorization: Bearer ${API_KEY}" \
           -H "Content-Type: application/json" \
-          -d "{\"code\": ${escaped_content}}")
+          -d "{\"code\": ${escaped_content}}" || echo "API call failed")
+
+        # Log errors if response is empty
+        if [ -z "$response" ]; then
+          echo "Error: No response from test generation API"
+          post_comment "### ⚠️ API Error
+
+        Test generation failed due to an API communication issue."
+        fi
         
         if [ -n "$response" ]; then
           test_text=$(echo "$response" | jq -r '.text // empty')
