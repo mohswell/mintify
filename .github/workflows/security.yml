@@ -54,7 +54,7 @@ jobs:
 
       # Dependency Review using official GitHub action
       - name: Dependency Review
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         if: github.event_name == 'pull_request'
         with:
           fail-on-severity: high
