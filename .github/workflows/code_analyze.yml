@@ -1,4 +1,5 @@
 name: Code Analysis
+
 on:
   workflow_dispatch:
   pull_request:
@@ -17,6 +18,7 @@ permissions:
 jobs:
   code_analysis:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -30,28 +32,35 @@ jobs:
           echo "BASE_APP_URL=${{ secrets.BASE_APP_URL }}" >> $GITHUB_ENV
           echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
 
-      - name: Analyze Changed Files
-        run: bash .github/workflows/scripts/analyze_files.sh
+      - name: Fetch last analyzed SHA
+        id: fetch_sha
+        run: |
+          echo "Fetching last analyzed SHA..."
+          last_sha=$(gh api repos/${{ github.repository }}/commits --per-page=1 \
+            --jq '.[0].sha')
+          echo "LAST_ANALYZED_SHA=${last_sha}" >> $GITHUB_ENV
+
+      - name: Analyze Changed Files Incrementally
+        run: bash .github/workflows/scripts/incremental_analyze.sh
         env:
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
           API_KEY: ${{ env.API_KEY }}
-          GITHUB_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          LAST_ANALYZED_SHA: ${{ env.LAST_ANALYZED_SHA }}
           GITHUB_HEAD_REF: ${{ github.event.pull_request.head.sha }}
 
-      - name: Post Analysis Comment with Feedback Options
-        run: bash .github/workflows/scripts/post_comment.sh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANALYSIS_RESULTS: ${{ env.ANALYSIS_RESULTS }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          RUN_ID: ${{ github.run_id }}
-
-      - name: Process Feedback
-        if: github.event.comment.body == '/approve' || github.event.comment.body == '/reject'
-        run: bash .github/workflows/scripts/process_feedback.sh
+      - name: Handle Feedback and Generate Tests
+        if: contains(github.event.comment.body, '/approve') || contains(github.event.comment.body, '/reject') || contains(github.event.comment.body, '/generate-tests')
+        run: bash .github/workflows/scripts/feedback_and_tests.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMMENT_BODY: ${{ github.event.comment.body }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.issue.number }}
+          GITHUB_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          ANALYSIS_RESULTS: ${{ env.ANALYSIS_RESULTS }}
+          BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+
+      - name: Update last analyzed SHA
+        run: |
+          echo "Updated SHA: $GITHUB_HEAD_REF"
