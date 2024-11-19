@@ -34,6 +34,8 @@ jobs:
 
       - name: Fetch last analyzed SHA
         id: fetch_sha
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Fetching last analyzed SHA..."
           last_sha=$(gh api repos/${{ github.repository }}/commits -q '.[0].sha')
