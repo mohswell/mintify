@@ -1,0 +1,136 @@
+# Labeler configuration file for a monorepo with Next.js and NestJS projects
+# Reference: https://github.com/actions/labeler
+
+### Global Labels
+# TypeScript files
+# typescript:
+#   - '**/*.ts'
+#   - '**/*.tsx'
+
+# JavaScript files
+# javascript:
+#   - '**/*.js'
+#   - '**/*.jsx'
+
+# Styles (CSS, SCSS)
+css:
+  - '**/*.css'
+  - '**/*.scss'
+
+# Configuration files
+config:
+  - '.github/**/*.yml'
+  - '.github/**/*.yaml'
+  - 'config/**/*.json'
+  - 'config/**/*.yaml'
+  - 'config/**/*.yml'
+  - '**/tsconfig.json'
+  - '**/.eslintrc.js'
+  - '**/.eslintignore'
+  - '**/.prettierrc'
+  - '**/.prettierignore'
+  - '**/jest.config.js'
+  - '**/.gitignore'
+  - '**/.npmrc'
+  - '**/package.json'
+  - '**/package-lock.json'
+  - '**/yarn.lock'
+  - '**/pnpm-lock.yaml'
+  - '**/next.config.js'
+  - '**/nest-cli.json'
+
+# Documentation files
+documentation:
+  - 'docs/**/*.md'
+  - '**/README.md'
+  - '**/CONTRIBUTING.md'
+  - '**/CHANGELOG.md'
+  - '**/LICENSE'
+  - '**/CODE_OF_CONDUCT.md'
+
+### Frontend Labels (Next.js - apps/web)
+frontend:
+  - 'apps/web/pages/**/*.{ts,tsx,js,jsx}'
+  - 'apps/web/components/**/*.{ts,tsx,js,jsx}'
+  - 'apps/web/styles/**/*.{css,scss}'
+  - 'apps/web/public/**/*.{png,jpg,jpeg,svg,gif,ico,webp}'
+  - 'apps/web/hooks/**/*.{ts,tsx,js,jsx}'
+  - 'apps/web/contexts/**/*.{ts,tsx,js,jsx}'
+  - 'apps/web/layouts/**/*.{ts,tsx,js,jsx}'
+  - 'apps/web/stores/**/*.{ts,tsx,js,jsx}'
+  - 'apps/web/utils/**/*.{ts,tsx,js,jsx}'
+
+pages:
+  - 'apps/web/pages/**/*.{ts,tsx,js,jsx}'
+
+components:
+  - 'apps/web/components/**/*.{ts,tsx,js,jsx}'
+
+styles:
+  - 'apps/web/styles/**/*.{css,scss}'
+
+public-assets:
+  - 'apps/web/public/**/*.{png,jpg,jpeg,svg,gif,ico,webp}'
+  - 'apps/web/public/**/*.{ttf,woff,woff2,eot}'
+
+### Backend Labels (NestJS - apps/api)
+backend:
+  - 'apps/api/src/**/*.controller.ts'
+  - 'apps/api/src/**/*.service.ts'
+  - 'apps/api/src/**/*.module.ts'
+  - 'apps/api/src/**/*.dto.ts'
+  - 'apps/api/src/**/*.entity.ts'
+  - 'apps/api/src/middleware/**/*.{ts,js}'
+  - 'apps/api/src/guards/**/*.{ts,js}'
+  - 'apps/api/src/interceptors/**/*.{ts,js}'
+  - 'apps/api/src/pipes/**/*.{ts,js}'
+  - 'apps/api/src/decorators/**/*.{ts,js}'
+  - 'apps/api/src/utils/**/*.{ts,js}'
+  - 'apps/api/src/constants/**/*.{ts,js}'
+
+controllers:
+  - 'apps/api/src/**/*.controller.ts'
+
+services:
+  - 'apps/api/src/**/*.service.ts'
+
+modules:
+  - 'apps/api/src/**/*.module.ts'
+
+dtos:
+  - 'apps/api/src/**/*.dto.ts'
+
+middleware:
+  - 'apps/api/src/middleware/**/*.{ts,js}'
+
+guards:
+  - 'apps/api/src/guards/**/*.{ts,js}'
+
+interceptors:
+  - 'apps/api/src/interceptors/**/*.{ts,js}'
+
+pipes:
+  - 'apps/api/src/pipes/**/*.{ts,js}'
+
+decorators:
+  - 'apps/api/src/decorators/**/*.{ts,js}'
+
+utils:
+  - 'apps/api/src/utils/**/*.{ts,js}'
+
+constants:
+  - 'apps/api/src/constants/**/*.{ts,js}'
+
+### Testing Labels
+tests:
+  - 'apps/web/tests/**/*.{ts,tsx,js,jsx}'
+  - 'apps/web/__tests__/**/*.{ts,tsx,js,jsx}'
+  - 'apps/api/test/**/*.{ts,js}'
+  - 'apps/api/src/__tests__/**/*.{ts,js}'
+
+### Package Files
+package:
+  - '**/package.json'
+  - '**/package-lock.json'
+  - '**/yarn.lock'
+  - '**/pnpm-lock.yaml'
