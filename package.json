@@ -48,6 +48,7 @@
     "class-validator": "0.14.1",
     "compression": "1.7.5",
     "dotenv": "^16.4.5",
+    "esbuild": "^0.19.12",
     "nodemailer": "^6.9.16",
     "tailwindcss": "^3.4.14",
     "zod": "^3.23.8"
