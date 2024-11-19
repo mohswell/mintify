@@ -25,12 +25,30 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+
+      - name: Install jq
+        run: sudo apt-get install jq
 
       - name: Set up environment
         run: |
           echo "BASE_APP_URL=${{ secrets.BASE_APP_URL }}" >> $GITHUB_ENV
           echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
+
+      - name: Determine PR Number
+        id: pr_number
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ github.event.pull_request.number }}" ]; then
+            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          elif [ -n "${{ github.event.issue.number }}" ]; then
+            echo "PR_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_ENV
+          else
+            # Fallback to getting the PR number from the current branch
+            PR_NUMBER=$(gh pr list --head "${GITHUB_REF#refs/heads/}" --json number -q '.[0].number')
+            echo "PR_NUMBER=${PR_NUMBER}" >> $GITHUB_ENV
+          fi
 
       - name: Fetch last analyzed SHA
         id: fetch_sha
@@ -44,24 +62,34 @@ jobs:
       - name: Analyze Changed Files Incrementally
         run: bash .github/workflows/scripts/incremental_analyze.sh
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
           API_KEY: ${{ env.API_KEY }}
           LAST_ANALYZED_SHA: ${{ env.LAST_ANALYZED_SHA }}
-          GITHUB_HEAD_REF: ${{ github.event.pull_request.head.sha }}
+          GITHUB_HEAD_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+
+      - name: Determine Comment Body
+        id: comment_body
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: |
+          comment_body=$(echo '${{ env.GITHUB_CONTEXT }}' | jq -r '.event.comment.body // ""')
+          echo "COMMENT_BODY=${comment_body}" >> $GITHUB_ENV
 
       - name: Handle Feedback and Generate Tests
-        if: contains(github.event.comment.body, '/approve') || contains(github.event.comment.body, '/reject') || contains(github.event.comment.body, '/generate-tests')
+        if: env.COMMENT_BODY == '/approve' || env.COMMENT_BODY == '/reject' || env.COMMENT_BODY == '/generate-tests'
         run: bash .github/workflows/scripts/feedback_and_tests.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_BODY: ${{ env.COMMENT_BODY }}
           REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.issue.number }}
-          GITHUB_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+          GITHUB_HEAD_REF: ${{ github.event.pull_request.head.ref || github.ref }}
           ANALYSIS_RESULTS: ${{ env.ANALYSIS_RESULTS }}
           BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
           API_KEY: ${{ secrets.API_KEY }}
 
       - name: Update last analyzed SHA
         run: |
-          echo "Updated SHA: $GITHUB_HEAD_REF"
+          echo "Updated SHA: ${{ github.event.pull_request.head.sha || github.sha }}"
