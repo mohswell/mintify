@@ -8,6 +8,11 @@ on:
 jobs:
   security:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+      pull-requests: read
 
     steps:
       - name: Checkout code
@@ -19,7 +24,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18
-          cache: 'npm' # Cache npm dependencies
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
@@ -27,31 +32,45 @@ jobs:
       - name: Run npm audit
         id: audit
         run: |
-          npm audit --audit-level=high || echo "Audit completed with issues."
-      - name: Display audit results
-        if: steps.audit.outcome == 'failure'
-        run: |
-          echo "npm audit detected vulnerabilities. Please review the issues above."
+          npm audit --audit-level=high || echo "::warning ::npm audit detected vulnerabilities"
 
-      - name: Scan for Secrets
-        uses: yochannah/codeql-secrets@v1
+      # Initialize CodeQL
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          languages: javascript  # This covers both JavaScript and TypeScript
+          queries: security-and-quality  # Add security and quality queries
 
-      # Code Scanning (CodeQL)
-      - name: Run CodeQL Analysis
+      # Autobuild (attempts to build any compiled languages)
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+
+      # Run CodeQL Analysis
+      - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2
         with:
-          category: 'security'
-          output: 'results.sarif'
+          category: "/language:javascript,/language:typescript" 
+          ram: '6000'  # Increase RAM for larger codebases
 
-      # Dependency Review (Optional)
+      # Dependency Review using official GitHub action
       - name: Dependency Review
+        uses: actions/dependency-review-action@v3
         if: github.event_name == 'pull_request'
-        uses: advanced-security/dependency-review-action@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-severity: high
 
+      # Check for secrets using gitleaks
+      - name: Check for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Upload security results
+      - name: Upload security results
+        uses: github/codeql-action/upload-sarif@v2
+        if: success() || failure()
+        with:
+          sarif_file: results.sarif
 
 # name: Security Audit & Dependency Check
 
