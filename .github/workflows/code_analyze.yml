@@ -56,6 +56,7 @@ jobs:
         run: bash .github/workflows/scripts/post_comment.sh
 
   feedback_processing:
+    needs: code_analysis
     if: github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
     steps:
