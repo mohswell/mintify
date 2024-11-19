@@ -62,6 +62,7 @@ jobs:
       - name: Analyze Changed Files Incrementally
         run: bash .github/workflows/scripts/incremental_analyze.sh
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
           API_KEY: ${{ env.API_KEY }}
           LAST_ANALYZED_SHA: ${{ env.LAST_ANALYZED_SHA }}
