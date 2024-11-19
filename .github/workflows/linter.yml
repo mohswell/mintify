@@ -8,9 +8,6 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [16, 18]
 
     steps:
       - name: Checkout code
@@ -21,11 +18,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm' 
+          node-version: '18'  
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --prefer-offline
+        run: |
+          npm ci --prefer-offline
+          # Install the missing peer dependency
+          npm install @next/eslint-plugin-next@>=12.3.0 <15
 
       - name: Run Linter
         id: lint
@@ -34,7 +34,7 @@ jobs:
       # Report Linting Issues
       - name: Report Linting Issues
         if: steps.lint.outcome == 'failure'
-        uses: reviewdog/action-eslint@v1 
+        uses: reviewdog/action-eslint@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-check
