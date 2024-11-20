@@ -1,8 +1,9 @@
 name: Auto Label Pull Requests
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+  # pull_request:
+  #   types: [opened, synchronize, reopened]
 
 permissions:
   pull-requests: write
