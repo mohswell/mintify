@@ -58,11 +58,11 @@ import { AuthModule } from './auth/auth.module';
   ],
 })
 
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(JwtMiddleware) 
-      .exclude('/', 'api/v1/auth/signup', 'api/v1/auth/login')
-      .forRoutes('*'); // Apply to all routes except those excluded
-  }
-}
+// export class AppModule implements NestModule {
+//   configure(consumer: MiddlewareConsumer) {
+//     consumer
+//       .apply(JwtMiddleware) 
+//       .exclude('/', 'api/v1/auth/signup', 'api/v1/auth/login')
+//       .forRoutes('*'); // Apply to all routes except those excluded
+//   }
+// }
