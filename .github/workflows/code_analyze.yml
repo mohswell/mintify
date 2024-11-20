@@ -1,5 +1,4 @@
 name: Code Analysis
-
 on:
   workflow_dispatch:
   pull_request:
@@ -12,63 +11,87 @@ on:
 permissions:
   pull-requests: write
   statuses: write
-  contents: read
+  contents: write
   issues: write
 
 jobs:
   code_analysis:
-    if: github.event_name != 'issue_comment'
+    if: |
+      github.event_name != 'issue_comment' ||
+      (github.event.comment.body == '/approve' ||
+       github.event.comment.body == '/reject' ||
+       github.event.comment.body == '/generate-tests' ||
+       github.event.comment.body == '/skip-tests')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Download previous analysis data
+        continue-on-error: true
+        uses: actions/download-artifact@v2
+        with:
+          name: analysis-data
+          path: .analysis-data
 
       - name: Set up environment
         run: |
           echo "BASE_APP_URL=${{ secrets.BASE_APP_URL }}" >> $GITHUB_ENV
           echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
+          # Create analysis data directory if it doesn't exist
+          mkdir -p .analysis-data
+          # If last_analyzed_commit doesn't exist, use base ref
+          if [ ! -f .analysis-data/last_analyzed_commit ]; then
+            git rev-parse ${{ github.event.pull_request.base.sha }} > .analysis-data/last_analyzed_commit
+          fi
+          echo "LAST_ANALYZED_COMMIT=$(cat .analysis-data/last_analyzed_commit)" >> $GITHUB_ENV
 
-      - name: Get Changed Files
-        id: changed_files
-        run: |
-          CHANGED_FILES=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")
-          FILTERED_FILES=$(echo "$CHANGED_FILES" | grep -E '\.(js|ts|yml|md)$' || true)
-          ESCAPED_FILES=$(echo "$FILTERED_FILES" | jq -sR .)
-          echo "files=$ESCAPED_FILES" >> $GITHUB_OUTPUT
-      
       - name: Analyze Changed Files
+        if: github.event_name != 'issue_comment'
+        run: bash .github/workflows/scripts/analyze_files.sh
         env:
-          BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
-          API_KEY: ${{ secrets.API_KEY }}
-          CHANGED_FILES: ${{ steps.changed_files.outputs.files }}
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          bash .github/workflows/scripts/analyze_files.sh
-        
-      - name: Post Analysis Comment
-        if: env.ANALYSIS_RESULTS != ''
+          BASE_APP_URL: ${{ env.BASE_APP_URL }}
+          API_KEY: ${{ env.API_KEY }}
+          GITHUB_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          LAST_ANALYZED_COMMIT: ${{ env.LAST_ANALYZED_COMMIT }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
+      - name: Save analysis data
+        if: github.event_name != 'issue_comment'
+        uses: actions/upload-artifact@v2
+        with:
+          name: analysis-data
+          path: .analysis-data
+          retention-days: 1
+
+      - name: Post Initial Analysis Comment
+        if: github.event_name != 'issue_comment'
+        run: bash .github/workflows/scripts/post_comment.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANALYSIS_RESULTS: ${{ env.ANALYSIS_RESULTS }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           RUN_ID: ${{ github.run_id }}
-        run: bash .github/workflows/scripts/post_comment.sh
 
-  feedback_processing:
-    needs: code_analysis
-    if: github.event_name == 'issue_comment'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Process Feedback and Tests
+      - name: Process Feedback
+        if: |
+          github.event_name == 'issue_comment' && 
+          (github.event.comment.body == '/approve' ||
+           github.event.comment.body == '/reject' ||
+           github.event.comment.body == '/generate-tests' ||
+           github.event.comment.body == '/skip-tests')
+        run: bash .github/workflows/scripts/process_feedback.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_APP_URL: ${{ env.BASE_APP_URL }}
+          API_KEY: ${{ env.API_KEY }}
           COMMENT_BODY: ${{ github.event.comment.body }}
-          BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
-          API_KEY: ${{ secrets.API_KEY }}
+          REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.issue.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: bash .github/workflows/scripts/feedback_and_tests.sh
