@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN     "isAdmin" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "isInactive" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "isPremium" BOOLEAN NOT NULL DEFAULT false;
