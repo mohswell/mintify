@@ -1,4 +1,4 @@
-import { SubmissionStatus } from "@/types";
+import { PullRequestStatus } from "@/types";
 
 export enum Device {
   LAPTOP_4K = 2560,
@@ -13,22 +13,18 @@ export enum Device {
   MOBILE_SM = 375,
 }
 
-export const MAX_IMAGE_SIZE = 10;
+export const DEFAULT_PAGE = 1;
+
+export const DEFAULT_TOTAL_ITEMS = 7;
 
 export const ITEMS_PER_PAGE = 6;
 
-export const STATUS_SYMBOLS: Record<SubmissionStatus, string> = {
+export const PR_STATUS_SYMBOLS: Record<PullRequestStatus, string> = {
   pending: "⏳",
   approved: "👍🏾",
-  rejected: "❌",
+  closed: "❌",
 };
 
-export const SESSION_NAME = "stucruum-session";
+export const SESSION_NAME = "mintify-session";
 
-export const SUBMISSION_FILTERS: { label: string; value: string }[] = [
-  { label: "All", value: "all" },
-  { label: "Art", value: "art" },
-  { label: "Pending", value: "pending" },
-  { label: "Approved", value: "approved" },
-  { label: "Rejected", value: "rejected" },
-];
+export const AUTH_PROVIDER = "Github";
