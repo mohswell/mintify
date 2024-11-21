@@ -5,6 +5,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { Button } from "./Button";
+import { Button as GithubLoginButton } from "@/components/views/ui/button";
 import { Input } from "./Input";
 import { useForm } from "react-hook-form";
 import {
@@ -19,9 +20,11 @@ import { useState } from "react";
 import { useAuthStore } from "@/stores/auth";
 import { login } from "@/actions";
 import { Loader } from "lucide-react";
+import { IconBrandGithub } from "@tabler/icons-react";
 import notification from "@/lib/notification";
 import Cookies from "js-cookie";
 import { SESSION_NAME } from "@/lib/constants";
+import { signIn } from "next-auth/react";
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -53,19 +56,16 @@ export default function LoginForm() {
         return;
       }
 
-      // On successful login, set the user data and token in the state and cookies
       notification({ message: "Login successful!" });
 
       setToken(data.token);
       setUser(data.user);
 
-      // Set the token in a cookie for access
       Cookies.set(SESSION_NAME, data.token, {
         secure: true,
         sameSite: "strict",
       });
 
-      // Redirect to the dashboard after successful login
       router.push("/home");
     } catch (error: any) {
       notification({ type: "error", message: "Login failed!" });
@@ -75,48 +75,95 @@ export default function LoginForm() {
     }
   }
 
+  const handleGitHubLogin = async () => {
+    setIsLoading(true);
+    try {
+      const result = await signIn('github', { redirect: false });
+
+      if (result?.error) {
+        notification({
+          type: "error",
+          message: "GitHub login failed. Please try again."
+        });
+      }
+    } catch (error) {
+      notification({
+        type: "error",
+        message: "An error occurred during GitHub login"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid gap-4">
-          <div className="grid gap-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <div className="grid gap-2">
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="Password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <Loader className="size-4 animate-spin" />
-            ) : (
-              "Login"
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input placeholder="Email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </Button>
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="Password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
+
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? (
+            <Loader className="size-4 animate-spin" />
+          ) : (
+            "Login"
+          )}
+        </Button>
+
+        <div className="relative my-4">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
+        </div>
+
+        <GithubLoginButton
+          variant="outline"
+          className="w-full"
+          onClick={handleGitHubLogin}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <Loader className="size-4 animate-spin mr-2" />
+          ) : (
+            <>
+              <IconBrandGithub className="mr-2 size-4" />
+              Login with GitHub
+            </>
+          )}
+        </GithubLoginButton>
+
+
         <div className="mt-4 text-center text-sm">
           Don't have an account?{" "}
           <Link href="/signup" className="underline">
