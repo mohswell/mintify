@@ -1,29 +1,7 @@
 import { API_URL } from "@/lib/env";
 import { useAuthStore } from "@/stores/auth";
-import { LoginDetails, NewSubmission, SignupDetails, Token } from "@/types";
+import { LoginDetails, SignupDetails, Token } from "@/types";
 
-export const verifyEmailToken = async (token: Token) => {
-  try {
-    const res = await fetch(`${API_URL}/email/verify-token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ token }),
-    });
-
-    const data = await res.json();
-
-    if (res.ok && data.success) {
-      return { ok: true, email: data.email };
-    } else {
-      return { ok: false };
-    }
-  } catch (error) {
-    console.error(error);
-    return { ok: false };
-  }
-};
 
 export const login = async (details: LoginDetails) => {
   const res = await fetch(`${API_URL}/auth/login`, {
@@ -113,90 +91,26 @@ export const verifyPasswordToken = async (token: Token) => {
   }
 };
 
+export const sendInviteEmail = async (email: string) => {
+  try {
+    const bearerToken = useAuthStore.getState().token;
+    const response = await fetch(`${API_URL}/invite/user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${bearerToken}`,
+      },
+      body: JSON.stringify({ email }), 
+    });
 
-export const getStats = async () => {
-  const user = useAuthStore.getState().user;
-  const token = useAuthStore.getState().token;
+    const result = await response.json();
 
-  const res = await fetch(`${API_URL}/stats/values/${user?.id}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to send invite');
+    }
 
-  const data = await res.json();
-
-  return { ok: res.ok, data };
-};
-
-export const getSubmissions = async () => {
-  const user = useAuthStore.getState().user;
-  const token = useAuthStore.getState().token;
-
-  const res = await fetch(`${API_URL}/submissions/images/${user?.id}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const data = await res.json();
-
-  return { ok: res.ok, data };
-};
-
-export const uploadImage = async (formData: FormData) => {
-  const token = useAuthStore.getState().token;
-
-  const res = await fetch(`${API_URL}/images/upload`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
-  });
-
-  const data = await res.json();
-
-  return { ok: res.ok, data };
-};
-
-export const createSubmission = async (details: NewSubmission) => {
-  const token = useAuthStore.getState().token;
-  const user = useAuthStore.getState().user;
-
-  const res = await fetch(`${API_URL}/images/submissions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      ...details,
-      user_id: (user?.id as number).toString(),
-    }),
-  });
-
-  const data = await res.json();
-
-  return { ok: res.ok, data };
-};
-
-export const fetchAllImages  = async () => {
-  const token = useAuthStore.getState().token;
-
-  const res = await fetch(`${API_URL}/images/all`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const data = await res.json();
-
-  return { ok: res.ok, data };
+    return result.message;
+  } catch (error: any) {
+    throw new Error(error.message || 'An error occurred while sending the invite');
+  }
 };
