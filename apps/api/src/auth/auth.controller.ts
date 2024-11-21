@@ -33,7 +33,4 @@ export class AuthController {
             throw new HttpException((error as Error).message, HttpStatus.UNAUTHORIZED);
         }
     }
-
-
-
 }
