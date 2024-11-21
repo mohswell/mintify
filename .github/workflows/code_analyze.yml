@@ -63,7 +63,7 @@ jobs:
 
       - name: Save analysis data
         if: github.event_name != 'issue_comment'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: analysis-data
           path: .analysis-data
