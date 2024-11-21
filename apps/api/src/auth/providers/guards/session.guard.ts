@@ -1,24 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { SupabaseDBClient } from 'src/utils';
-import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '~factories';
 
 @Injectable()
 export class SessionGuard {
-  private supabase: SupabaseClient;
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor(private readonly configService: ConfigService) {
-    this.supabase = SupabaseDBClient(this.configService);
+  async createSession(userId: bigint, token: string, expiresAt: Date): Promise<void> {
+    await this.prisma.session.create({
+      data: { userId, token, expiresAt },
+    });
   }
 
-  async createSession(userId: string, token: string): Promise<void> {
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // Expiration for 24 hours
-    const { error } = await this.supabase.from('sessions').insert([
-      { user_id: userId, token, expires_at: expiresAt },
-    ]);
-
-    if (error) {
-      throw new Error(`Failed to create session: ${error.message}`);
-    }
+  async deleteExpiredSessions(): Promise<void> {
+    await this.prisma.session.deleteMany({
+      where: { expiresAt: { lte: new Date() } },
+    });
   }
 }
