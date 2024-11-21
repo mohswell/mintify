@@ -40,3 +40,6 @@ yarn-error.log*
 
 # vs code settings
 .vscode/
+
+# Prisma lock toml files
+migration_lock.toml
