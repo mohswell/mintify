@@ -1,5 +1,5 @@
-so the api has the:
-text.
+so the api has the endpoints for:
+generating text.
 compare image.
 analyze image.
 
@@ -11,3 +11,4 @@ my gh action should act on the file changes,
 4. write tests
 5. approval/denied action by user should also reflect on the ai response
 
+Hopefully, also format the ai response to allow the separation of files for easier display
