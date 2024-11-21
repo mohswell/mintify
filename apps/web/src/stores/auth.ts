@@ -1,16 +1,17 @@
 import { create } from "zustand";
-import { User, Token } from "@/types";
+import { Token } from "@/types";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { SESSION_NAME } from "@/lib/constants";
+import { AuthUser } from "@/auth/factories/authInterface";
 
 interface AuthState {
-  user: User | null;
+  user: AuthUser | null
   token: Token;
 }
 
 interface AuthActions {
   logout: () => void;
-  setUser: (user: User | null) => void;
+  setUser: (user: AuthUser | null) => void;
   setToken: (token: Token) => void;
 }
 
@@ -21,7 +22,7 @@ export const useAuthStore = create(
       user: null,
 
       setToken: (token: Token) => set({ token }),
-      setUser: (user: User | null) => set({ user }),
+      setUser: (user: AuthUser | null) => set({ user }),
       logout: () => sessionStorage.removeItem(SESSION_NAME),
     }),
     {
