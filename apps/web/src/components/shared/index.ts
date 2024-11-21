@@ -5,6 +5,5 @@ export { Dropdown } from "./Dropdown";
 export { DropdownItem } from "./DropdownItem";
 export { Toggle } from "./Toggle";
 export { ThemeToggle } from "./ThemeToggle";
-export { Modal } from "./Modal";
 export { Textarea } from "./Textarea";
 export { Checkbox } from "./Checkbox";
