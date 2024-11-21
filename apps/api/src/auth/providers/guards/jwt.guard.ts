@@ -9,7 +9,7 @@ export class JwtGuard {
 
   sign(payload: any): string {
     return jwt.sign(payload, this.configService.get<string>('JWT_SECRET') || 'secret_key', {
-      expiresIn : '1d',
+      expiresIn : '7d',
     });
   }
 }

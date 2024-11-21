@@ -10,6 +10,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { GeminiModule } from './gemini/gemini.module';
 import { AuthModule } from './auth/auth.module';
+import { PrismaModule } from '~factories';
+import { ApiModule } from '~factories/api/api.module';
 
 @Module({
   imports: [
@@ -42,7 +44,9 @@ import { AuthModule } from './auth/auth.module';
     //   }
     // ]),
     GeminiModule, 
-    AuthModule
+    AuthModule,
+    PrismaModule,
+    ApiModule,
   ],
   controllers: [AppController],
   providers: [

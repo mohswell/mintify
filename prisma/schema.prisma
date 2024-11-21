@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model ApiKey {
+  id          BigInt    @id @default(autoincrement())
+  userId      BigInt
+  apiKey      String    @unique
+  status      ApiKeyStatus @default(ACTIVE)
+  usageCount  Int       @default(0)
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+model User {
+  id          BigInt    @id @default(autoincrement())
+  email       String    @unique
+  firstName   String
+  lastName    String
+  username    String    @unique
+  password    String
+  isPremium Boolean  @default(false) 
+  isAdmin   Boolean  @default(false)
+  isInactive Boolean @default(false)
+  apiKeys     ApiKey[]
+  sessions    Session[]
+  phone               String?
+  aiUserToken         String?
+  role                UserRole  @default(USER)
+  maxRequestsPerDay   Int?      @default(10)
+  githubRepositoryUrl String?
+  registrationDate    DateTime?
+  isActive            Boolean   @default(true)
+  aiModelVersion      String?
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  MODERATOR
+  GUEST
+}
+
+model Session {
+  id          BigInt    @id @default(autoincrement())
+  userId      BigInt
+  token       String    @unique
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  user        User      @relation(fields: [userId], references: [id])
+}

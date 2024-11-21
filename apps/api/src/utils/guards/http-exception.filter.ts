@@ -1,4 +1,4 @@
-
+import { Request, Response } from 'express';
 import {
     ExceptionFilter,
     Catch,
@@ -11,8 +11,8 @@ import {
   export class HttpExceptionFilter implements ExceptionFilter {
     catch(exception: unknown, host: ArgumentsHost) {
       const ctx = host.switchToHttp();
-      const response = ctx.getResponse();
-      const request = ctx.getRequest();
+      const request = ctx.getRequest<Request>();
+      const response = ctx.getResponse<Response>();
   
       const status =
         exception instanceof HttpException

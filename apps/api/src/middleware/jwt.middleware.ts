@@ -1,21 +1,28 @@
-// src/auth/jwt.middleware.ts
 import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common';
-import { verifyToken } from './session.middleware'; // Import the utility function
-import { ConfigService } from '@nestjs/config';
+import { ApiMiddleware } from './api.middleware';
+import { ApiKeyService } from '~factories/api/api.service';
 
 @Injectable()
 export class JwtMiddleware implements NestMiddleware {
-    constructor(private readonly configService: ConfigService) {}
+    constructor(
+        private readonly apiMiddleware: ApiMiddleware,
+        private readonly apiKeyService: ApiKeyService,
+    ) {}
 
     async use(req: any, res: any, next: () => void) {
-        const token = req.headers['authorization']?.split(' ')[1]; // Extract token from Authorization header
+        const authHeader = req.headers['authorization'];
+        if (!authHeader) {
+            throw new UnauthorizedException('Authorization token is missing');
+        }
+
+        const token = authHeader.split(' ')[1];
 
         try {
-            const decoded = await verifyToken(token, this.configService); // Verify token using the utility
-            req.user = decoded; // Attach user data to request
-            next(); // Proceed to the next middleware or route handler
-        } catch (err) {
-            console.error('JWT verification failed:', err);
+            const decoded = await this.apiMiddleware.verifyToken(token);
+            req.user = await this.apiKeyService.getUserFromToken(decoded, token);
+            next();
+        } catch(err) {
+            console.error('Token verification failed:', err);
             throw new UnauthorizedException((err as Error).message);
         }
     }

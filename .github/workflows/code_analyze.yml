@@ -1,5 +1,4 @@
 name: Code Analysis
-
 on:
   workflow_dispatch:
   pull_request:
@@ -17,79 +16,82 @@ permissions:
 
 jobs:
   code_analysis:
+    if: |
+      github.event_name != 'issue_comment' ||
+      (github.event.comment.body == '/approve' ||
+       github.event.comment.body == '/reject' ||
+       github.event.comment.body == '/generate-tests' ||
+       github.event.comment.body == '/skip-tests')
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          ref: ${{ github.event.pull_request.head.ref }}
 
-      - name: Install jq
-        run: sudo apt-get install jq
+      - name: Download previous analysis data
+        continue-on-error: true
+        uses: actions/download-artifact@v3
+        with:
+          name: analysis-data
+          path: .analysis-data
 
       - name: Set up environment
         run: |
           echo "BASE_APP_URL=${{ secrets.BASE_APP_URL }}" >> $GITHUB_ENV
           echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
-
-      - name: Determine PR Number
-        id: pr_number
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ -n "${{ github.event.pull_request.number }}" ]; then
-            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-          elif [ -n "${{ github.event.issue.number }}" ]; then
-            echo "PR_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_ENV
-          else
-            # Fallback to getting the PR number from the current branch
-            PR_NUMBER=$(gh pr list --head "${GITHUB_REF#refs/heads/}" --json number -q '.[0].number')
-            echo "PR_NUMBER=${PR_NUMBER}" >> $GITHUB_ENV
+          # Create analysis data directory if it doesn't exist
+          mkdir -p .analysis-data
+          # If last_analyzed_commit doesn't exist, use base ref
+          if [ ! -f .analysis-data/last_analyzed_commit ]; then
+            git rev-parse ${{ github.event.pull_request.base.sha }} > .analysis-data/last_analyzed_commit
           fi
+          echo "LAST_ANALYZED_COMMIT=$(cat .analysis-data/last_analyzed_commit)" >> $GITHUB_ENV
 
-      - name: Fetch last analyzed SHA
-        id: fetch_sha
+      - name: Analyze Changed Files
+        if: github.event_name != 'issue_comment'
+        run: bash .github/workflows/scripts/analyze_files.sh
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Fetching last analyzed SHA..."
-          last_sha=$(gh api repos/${{ github.repository }}/commits -q '.[0].sha')
-          echo "LAST_ANALYZED_SHA=${last_sha}" >> $GITHUB_ENV
-
-      - name: Analyze Changed Files Incrementally
-        run: bash .github/workflows/scripts/incremental_analyze.sh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
           API_KEY: ${{ env.API_KEY }}
-          LAST_ANALYZED_SHA: ${{ env.LAST_ANALYZED_SHA }}
-          GITHUB_HEAD_REF: ${{ github.event.pull_request.head.sha || github.sha }}
-          PR_NUMBER: ${{ env.PR_NUMBER }}
+          GITHUB_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          LAST_ANALYZED_COMMIT: ${{ env.LAST_ANALYZED_COMMIT }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
 
-      - name: Determine Comment Body
-        id: comment_body
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: |
-          comment_body=$(echo '${{ env.GITHUB_CONTEXT }}' | jq -r '.event.comment.body // ""')
-          echo "COMMENT_BODY=${comment_body}" >> $GITHUB_ENV
+      - name: Save analysis data
+        if: github.event_name != 'issue_comment'
+        uses: actions/upload-artifact@v3
+        with:
+          name: analysis-data
+          path: .analysis-data
+          retention-days: 1
 
-      - name: Handle Feedback and Generate Tests
-        if: env.COMMENT_BODY == '/approve' || env.COMMENT_BODY == '/reject' || env.COMMENT_BODY == '/generate-tests'
-        run: bash .github/workflows/scripts/feedback_and_tests.sh
+      - name: Post Initial Analysis Comment
+        if: github.event_name != 'issue_comment'
+        run: bash .github/workflows/scripts/post_comment.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMMENT_BODY: ${{ env.COMMENT_BODY }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ env.PR_NUMBER }}
-          GITHUB_HEAD_REF: ${{ github.event.pull_request.head.ref || github.ref }}
           ANALYSIS_RESULTS: ${{ env.ANALYSIS_RESULTS }}
-          BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
-          API_KEY: ${{ secrets.API_KEY }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
 
-      - name: Update last analyzed SHA
-        run: |
-          echo "Updated SHA: ${{ github.event.pull_request.head.sha || github.sha }}"
+      - name: Process Feedback
+        if: |
+          github.event_name == 'issue_comment' && 
+          (github.event.comment.body == '/approve' ||
+           github.event.comment.body == '/reject' ||
+           github.event.comment.body == '/generate-tests' ||
+           github.event.comment.body == '/skip-tests')
+        run: bash .github/workflows/scripts/process_feedback.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_APP_URL: ${{ env.BASE_APP_URL }}
+          API_KEY: ${{ env.API_KEY }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}

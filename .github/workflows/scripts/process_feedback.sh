@@ -1,34 +1,107 @@
 #!/usr/bin/env bash
+set -e
 
 echo "Processing feedback..."
 
-if [[ "$COMMENT_BODY" == "/approve" ]]; then
-  echo "Feedback: Approved - Applying changes"
+# Function to post comment using GitHub API
+post_comment() {
+  local body="$1"
+  curl -X POST \
+    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+    -H "Accept: application/vnd.github.v3+json" \
+    -d "{\"body\": $(echo "$body" | jq -sR)}" \
+    "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
+}
 
-  # Fetch the PR and checkout branch
-  git fetch origin "${GITHUB_HEAD_REF}"
-  git checkout "${GITHUB_HEAD_REF}"
+# Function to generate tests for a file
+generate_tests() {
+  local file="$1"
+  local file_content=$(cat "$file")
+  local escaped_content=$(echo "$file_content" | jq -sR .)
+  
+  curl -s -X POST "${BASE_APP_URL}/gemini/generate-tests" \
+    -H "Authorization: Bearer ${API_KEY}" \
+    -H "Content-Type: application/json" \
+    -d "{\"code\": ${escaped_content}}"
+}
 
-  # Parse `ANALYSIS_RESULTS` for suggested changes
-  echo "$ANALYSIS_RESULTS" | while IFS= read -r line; do
-    # Parse each line for suggestions (example format, adjust as needed)
-    if [[ $line == *"replace"* ]]; then
-      # Extract details for each code change
-      file_path=$(echo "$line" | grep -oP '(?<=File: `)[^`]+')
-      suggestion=$(echo "$line" | grep -oP '(?<=\`\`\`diff\n)[\s\S]+(?=\n\`\`\`)')
-
-      # Apply change to the file using `sed` or `patch` if formatted as diff
-      echo "$suggestion" | patch "$file_path"
+case "$COMMENT_BODY" in
+  "/approve")
+    echo "Feedback: Approved"
+    
+    # Configure git
+    git config --global user.name "github-actions[bot]"
+    git config --global user.email "github-actions[bot]@users.noreply.github.com"
+    
+    # Apply suggested changes
+    if [ -n "$ANALYSIS_RESULTS" ]; then
+      echo "$ANALYSIS_RESULTS" | while IFS= read -r line; do
+        if [[ $line == *"replace"* ]]; then
+          file_path=$(echo "$line" | grep -oP '(?<=File: `)[^`]+')
+          suggestion=$(echo "$line" | grep -oP '(?<=\`\`\`diff\n)[\s\S]+(?=\n\`\`\`)')
+          echo "$suggestion" | patch "$file_path"
+        fi
+      done
+      
+      # Commit and push changes
+      git add .
+      git commit -m "Apply AI code suggestions"
+      git push origin HEAD
     fi
-  done
+    
+    post_comment "### ✅ Changes Approved
+    
+Would you like to generate tests for the changed files?
+- Reply \`/generate-tests\` to generate test cases
+- Reply \`/skip-tests\` to skip test generation"
+    ;;
+    
+  "/reject")
+    post_comment "### ❌ Changes Rejected
+    
+No changes have been applied. Please review the feedback and make necessary adjustments."
+    ;;
+    
+  "/generate-tests")
+    echo "Generating tests..."
+    test_results=""
+    
+    # Get changed files
+    changed_files=$(git diff --name-only HEAD~1)
+    
+    for file in $changed_files; do
+      if [[ "$file" =~ \.(js|ts)$ ]]; then
+        echo "Generating tests for $file"
+        test_response=$(generate_tests "$file")
+        
+        if [ -n "$test_response" ]; then
+          test_results="${test_results}
+## Tests for \`$file\`
+\`\`\`javascript
+${test_response}
+\`\`\`
+"
+        fi
+      fi
+    done
+    
+    if [ -n "$test_results" ]; then
+      post_comment "### 🧪 Generated Tests
+${test_results}
 
-  # Commit and push changes
-  git config --global user.name "github-actions[bot]"
-  git config --global user.email "github-actions[bot]@users.noreply.github.com"
-  git add .
-  git commit -m "Apply AI code suggestions"
-  git push origin "${GITHUB_HEAD_REF}"
-
-elif [[ "$COMMENT_BODY" == "/reject" ]]; then
-  echo "Feedback: Rejected - No changes applied"
-fi
+*Review the generated tests and add them to your test suite if they look good.*"
+    else
+      post_comment "### ⚠️ No Tests Generated
+No eligible files found for test generation."
+    fi
+    ;;
+    
+  "/skip-tests")
+    post_comment "### ⏭️ Test Generation Skipped
+Proceeding without generating tests."
+    ;;
+    
+  *)
+    echo "Unknown command: $COMMENT_BODY"
+    ;;
+esac

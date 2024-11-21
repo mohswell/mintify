@@ -1,32 +1,41 @@
-import { IsString, IsEmail, IsBoolean, IsNotEmpty, IsOptional, IsPhoneNumber, IsEnum, Min, Max, IsDateString, IsInt } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsString, IsEmail, IsBoolean, IsNotEmpty, IsOptional, IsPhoneNumber, IsEnum, Min, Max, IsDateString, IsInt, MinLength } from 'class-validator';
 import { UserRole } from '~/types';
 
 export class UserDto {
     @IsEmail()
     @IsNotEmpty()
     email: string;
-
+  
     @IsString()
     @IsNotEmpty()
     firstName: string;
-
+  
     @IsString()
     @IsNotEmpty()
     lastName: string;
-
+  
     @IsString()
     @IsNotEmpty()
+    @MinLength(4)
     username: string;
-
+  
     @IsString()
     @IsNotEmpty()
+    @MinLength(6)
     password: string;
 
     @IsBoolean()
+    @Transform(({ value }) => value === 'true' || value === true)
     isPremium: boolean;
 
     @IsBoolean()
+    @Transform(({ value }) => value === 'true' || value === true)
     isAdmin: boolean;
+
+    @IsBoolean()
+    @IsOptional()
+    isInactive?: boolean;
 
     @IsPhoneNumber()
     @IsOptional()

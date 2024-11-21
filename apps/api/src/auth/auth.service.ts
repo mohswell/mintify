@@ -1,150 +1,77 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
-import { UserDto } from '~/dto/';
-import { LoginDto } from '~/dto/';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { SupabaseDBClient } from '~/utils';
-import { SessionGuard } from './providers/guards/session.guard';
+import { ConflictException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { UserDto, LoginDto } from '~/dto';
 import { JwtGuard } from './providers/guards/jwt.guard';
+import { SessionGuard } from './providers/guards/session.guard';
+import { UserProvider } from './providers/suppliers/user.provider';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
-  private supabase: SupabaseClient;
-
   constructor(
-    private readonly configService: ConfigService,
     private readonly sessionGuard: SessionGuard,
-    private readonly jwtGuard: JwtGuard
-  ) {
-    this.supabase = SupabaseDBClient(this.configService);
-  }
+    private readonly jwtGuard: JwtGuard,
+    private readonly userProvider: UserProvider,
+  ) { }
 
   async signup(userDto: UserDto) {
-    const { email, firstName, lastName, username, password, phone } = userDto;
-
     try {
-      // Hash the password
-      const saltRounds = 12;
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-      // Insert the new user using the supabase
-      const { data, error } = await this.supabase
-        .from('users')
-        .insert([
-          {
-            email,
-            first_name: firstName,
-            last_name: lastName,
-            username,
-            password: hashedPassword,
-            phone_number: phone,
-          },
-        ])
-        .select();
-
-      if (error) {
-        throw new Error(`Failed to create user: ${error.message}`);
+      const user = await this.userProvider.createUser(userDto);
+      return user;
+    } catch (err) {
+      // Handle specific Prisma errors
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        // Unique constraint violation (e.g., duplicate email)
+        if (err.code === 'P2002') {
+          throw new ConflictException('A user with this email or username already exists');
+        }
       }
 
-      // Return the created user data
-      return data[0];
-    } catch (err) {
-      throw new Error(`Internal server error: ${(err as Error).message}`);
+      // Log the error for internal tracking
+      console.error('Signup error:', err);
+
+      // Generic server error for unexpected issues
+      throw new InternalServerErrorException('Unable to complete signup. Please try again.');
     }
   }
 
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
+    try {
+      const user = await this.userProvider.findUserByEmail(email);
+      if (!user) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
 
-    // Trim spaces
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
-
-    // Query Supabase to find the user by email
-    const { data: user, error } = await this.supabase
-      .from('users')
-      .select('id, email, password, first_name, last_name, username, is_admin, is_inactive')
-      .eq('email', trimmedEmail)
-      .eq('is_inactive', false)
-      .single();
-
-    if (error || !user) {
-      //console.error('Supabase Error:', error);
-      throw new UnauthorizedException('This User is non-existent!, contact Photoruum`s Admin if you think this is a mistake');
-    }
-
-    // Verify password hash
-    const isPasswordValid = await bcrypt.compare(trimmedPassword, user.password);
+      const isPasswordValid = await this.userProvider.validatePassword(password, user.password);
       if (!isPasswordValid) {
-        throw new UnauthorizedException('Invalid Login credentials');
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      // Create a complex payload based on the User structure
+      const payload = {
+        sub: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        role: user.role,
+        isPremium: user.isPremium,
+        isAdmin: user.isAdmin,
+      };
+
+      const token = this.jwtGuard.sign(payload);
+
+      // Create session
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000 * 7); // 7 days
+      await this.sessionGuard.createSession(user.id, token, expiresAt);
+
+      // Filter sensitive info
+      const { password: _, ...userWithoutPassword } = user;
+
+      return { user: userWithoutPassword, token };
     }
-    
-    // if (password !== user.password) {
-    //   throw new UnauthorizedException('Invalid credentials');
-    // }
-
-    // Generate a JWT with user details and a secret key
-    const token = this.jwtGuard.sign(
-      { id: user.id, email: user.email, is_admin: user.is_admin },
-    );
-
-    // Use the session guard to create a session
-    await this.sessionGuard.createSession(user.id, token);
-
-    // Return the user data and token
-    return { user, token };
+    catch (err) {
+      throw new Error(`Internal server error: ${(err as any).message}`);
+    }
   }
-
-  async adminLogin(loginDto: LoginDto) {
-    const { email, password } = loginDto;
-  
-    // Trim spaces
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
-  
-    // Check in `admins` table for admin user
-    const { data: admin, error: adminError } = await this.supabase
-      .from('admins')
-      .select('*')
-      .eq('email', trimmedEmail)
-      .single();
-  
-    if (adminError || !admin) {
-      throw new UnauthorizedException('Your Login attempt as an Admin is invalid, Retry again!');
-    }
-  
-    // Verify password hash
-    const isPasswordValid = await bcrypt.compare(trimmedPassword, admin.password);
-  
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid Login credentials');
-    }
-  
-    // Check if admin user exists in `users` table with is_admin = true
-    const { data: user, error: userError } = await this.supabase
-      .from('users')
-      .select('id, email, is_admin')
-      .eq('email', trimmedEmail)
-      .eq('is_admin', true)
-      .single();
-  
-    if (userError || !user) {
-      throw new UnauthorizedException('No admin privileges set, contact the Photoruum Administrator');
-    }
-  
-    // Generate JWT
-    const token = this.jwtGuard.sign(
-      { id: admin.id, email: admin.email, is_admin: user.is_admin }
-    );
-  
-    // Create session for admin
-    await this.sessionGuard.createSession(admin.id, token);
-  
-    // Hide the password before returning the response
-    delete admin.password;
-  
-    // Return admin data (minus the password) and token
-    return { admin, token };
-  }  
 }
