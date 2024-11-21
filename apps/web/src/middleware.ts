@@ -7,7 +7,7 @@ import { decodeJWT } from '@/lib/utils'
 
 // Paths that should be accessible without authentication
 const publicPaths = [
-  '/login',
+  '/',
   '/forgot-password',
   '/password-reset',
   '/signup',
