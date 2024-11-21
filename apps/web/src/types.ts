@@ -1,3 +1,5 @@
+import { assertValue } from "@/lib/helpers";
+
 export interface LayoutProps {
   page: {
     title: string;
@@ -40,15 +42,17 @@ export interface SignupInfo {
 }
 
 export interface User {
-  id: number;
+  id: string;
   first_name: string;
   last_name: string;
   email: string;
   username: string;
-  phone_number: string;
-  is_admin: false;
+  phone_number?: string;
+  is_admin?: false;
   is_inactive: false;
   created_at: string;
+  updated_at: string;
+  profile_image?: string;
 }
 
 export type Token = string | null;
@@ -58,92 +62,7 @@ export interface UserToken {
   user: User;
 }
 
-export type SubmissionStatus = "pending" | "approved" | "rejected";
-
-export interface Submission {
-  id: number;
-  image_url: string;
-  upload_date: string;
-  title: string;
-  artruum_submission: boolean;
-  status: SubmissionStatus;
-  user_id: number;
-  size: string;
-}
-
-export interface SubmissionFile {
-  fileName: string;
-  fileUrl: string;
-  fileSize: string;
-}
-
-export interface Photo {
-  id: string;
-  image: File;
-  url: string;
-}
-
-
-export interface PhotoIndicatorProps {
-  image: Photo;
-  isActive: boolean;
-  onSelect: () => void;
-}
-
-import { ChangeEventHandler } from "react";
-export interface PhotoViewProps {
-  images: Photo[];
-  activeImage: number;
-  onRemove: (id: string) => void;
-  onChange: ChangeEventHandler<HTMLInputElement>;
-}
-
-export interface ImageUploadResponse {
-  message: string;
-  files: SubmissionFile[];
-}
-
-export interface NewSubmission {
-  artruum_submission: boolean;
-  description?: string;
-  tags: string[];
-  files: SubmissionFile[];
-}
-
-export interface Stats {
-  submissions: number;
-  art: number;
-  approved: number;
-  pending: number;
-  unapproved: number;
-}
-
-export interface ModalProps {
-  opened: boolean;
-  onClose: () => void;
-}
-
-export interface CommunityGalleryProps {
-  images: { 
-    image_url: string; 
-    title: string; 
-    description?: string;
-    users: {  
-        first_name: string; 
-        last_name: string; 
-      };
-  }[];
-}
-
-export type CommunityImage = {
-  image_url: string;
-  title: string;
-  description?: string;
-  users: {
-    first_name: string;
-    last_name: string;
-  };
-};
+export type PullRequestStatus = "pending" | "approved" | "closed";
 
 export interface PaginationControlsProps {
   currentPage: number;
@@ -156,23 +75,7 @@ export interface PaginationControlsProps {
   onNextPage: () => void;
 }
 
-export interface SubmissionsHeaderProps {
-  opened: boolean;
-  isMobile: boolean;
-  filter: Option;
-  toggle: () => void;
-  onFilterChange: (value: Option) => void;
-  filterOptions: Option[];
-}
-
-export interface SubmissionsListProps {
-  submissions: Submission[];
-  currentPage: number;
-  totalPages: number;
-  pageNumbers: number[];
-  onPageChange: (page: number) => void;
-  onFirstPage: () => void;
-  onLastPage: () => void;
-  onPreviousPage: () => void;
-  onNextPage: () => void;
-}
+export const API_URL = assertValue(
+  process.env.NEXT_PUBLIC_API_BASE_URL,
+  "Missing environment variable: NEXT_PUBLIC_API_BASE_URL",
+);
