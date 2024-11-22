@@ -9,6 +9,7 @@
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "start": "npm run start --workspace=api",
+    "lint-staged": "lint-staged",
     "prepare": "husky install",
     "commit": "./node_modules/cz-customizable/standalone.js"
   },
