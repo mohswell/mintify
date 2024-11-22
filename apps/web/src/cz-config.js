@@ -1,7 +1,7 @@
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from 'node:fs';
+import path from 'node:path';
 
-const baseDir = "components/";
+const baseDir = 'components/';
 
 const readFolders = (dir, baseDirOverride) => {
   try {
