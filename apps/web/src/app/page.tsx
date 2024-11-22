@@ -1,13 +1,13 @@
-import { Nav } from '@/components/login/Login-Nav';
-import Footer from '@/components/login/Login-Footer';
+import { Nav } from '@/components/views/login/Login-Nav';
+import Footer from '@/components/views/login/Login-Footer';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import LoginForm from '@/components/login/Login-Form';
+} from '@/components/views/ui/card';
+import LoginForm from '@/components/views/login/Login-Form';
 
 export default function Login() {
   return (
