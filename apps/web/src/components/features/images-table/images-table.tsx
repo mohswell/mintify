@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/views/ui/card";
 import {
   Table,
   TableBody,
@@ -10,16 +10,29 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/views/ui/table";
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
-} from "@/components/ui/pagination";
-import { Button } from "@/components/ui/button";
-import { Image as ImageType } from "@/types";
+} from "@/components/views/ui/pagination";
+import { Button } from "@/components/views/ui/button";
 import { ChevronLeft, ChevronRight, X, Download, Palette } from "lucide-react";
 import { formatDate } from "@/lib/helpers";
+
+interface ImageType {
+  id: string;
+  imageUrl: string;
+  title: string;
+  user: {
+    firstName: string;
+    lastName: string;
+  };
+  size: string;
+  uploadDate: string;
+  status: "pending" | "approved" | "rejected";
+  artruumSubmission?: boolean;
+}
 
 interface ImagesTableProps {
   images: ImageType[];

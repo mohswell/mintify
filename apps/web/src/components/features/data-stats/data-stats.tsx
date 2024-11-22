@@ -1,6 +1,6 @@
 "use client"
 import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/views/ui/card';
 
 interface DataStats {
   count: number;

@@ -4,8 +4,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../../components/ui/card";
-import { SignupForm } from "../../components/features";
+} from "@/components/views/ui/card";
+import { SignupForm } from "@/components/features";
 
 export default function Signup() {
   return (

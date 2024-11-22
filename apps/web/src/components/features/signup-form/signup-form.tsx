@@ -4,8 +4,8 @@ import Link from "next/link";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/views/ui/button";
+import { Input } from "@/components/views/ui/input";
 import { useForm } from "react-hook-form";
 import {
   Form,
@@ -14,16 +14,20 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../ui/form";
-import { createUser } from "../../../server/users";
+} from "../../views/ui/form";
+import { signup } from "@/actions";
 import { useState } from "react";
 import { Loader } from "lucide-react";
 
 const formSchema = z.object({
-  email: z.string().email(),
-  username: z.string().min(2).max(50),
-  password: z.string().min(8).max(50),
+  firstName: z.string().min(1, { message: "First name is required" }).max(50),
+  lastName: z.string().min(1, { message: "Last name is required" }).max(50),
+  email: z.string().email({ message: "Invalid email address" }),
+  username: z.string().min(2, { message: "Username must be at least 2 characters" }).max(50),
+  password: z.string().min(8, { message: "Password must be at least 8 characters" }).max(50),
 });
+
+
 
 export default function SignupForm() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -34,12 +38,14 @@ export default function SignupForm() {
       username: "",
       email: "",
       password: "",
+      firstName: "",
+      lastName: "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    await createUser(values);
+    await signup(values);
     form.reset();
     setIsLoading(false);
   }
@@ -47,6 +53,36 @@ export default function SignupForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="grid gap-4">
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>First Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="First Name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="lastName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Last Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Last Name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
         <div className="grid gap-4">
           <div className="grid gap-4">
             <FormField
