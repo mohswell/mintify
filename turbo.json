@@ -6,6 +6,7 @@
       "dependsOn": [
         "^build"
       ],
+      "env": ["GITHUB_CLIENT_ID", "GITHUB_SECRET", "NEXTAUTH_URL"],
       "inputs": [
         "$TURBO_DEFAULT$",
         ".env*"
