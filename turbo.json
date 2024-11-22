@@ -27,14 +27,6 @@
     "start": {
       "cache": false,
       "persistent": true
-    },
-    "env": {
-      "GITHUB_CLIENT_ID": true,
-      "GITHUB_SECRET": true,
-      "NEXTAUTH_URL": true,
-      "NEXT_PUBLIC_SUPABASE_URL": true,
-      "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY": true,
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY": true
     }
   }
 }
