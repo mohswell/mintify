@@ -15,7 +15,7 @@ export default function Dashboard() {
             You have no code reviews
           </h3>
           <p className="text-sm text-muted-foreground">
-            You can start setting the app in github PR's
+            You can start setting the app in github PR&apos;s
           </p>
           <Button className="mt-4">Add Product</Button>
         </div>
