@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/views/ui/button";
 import { DataStats } from "@/components/features";
 
 export default function Home() {

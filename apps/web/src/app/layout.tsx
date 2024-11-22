@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import "../styles/globals.css";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 
 import { Kanit as FontSans } from "next/font/google";
 
 import { cn } from "../lib/utils";
-import { ThemeProvider } from "../components/ui/theme-provider";
+import { ThemeProvider } from "../components/views/ui/theme-provider";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import Providers from "../providers/Provider";
 
