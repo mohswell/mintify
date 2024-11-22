@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/views/ui/card";
 import {
   Table,
   TableBody,
@@ -9,14 +9,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../ui/table";
+} from "../../views/ui/table";
 import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
-} from "../../ui/pagination";
-import { Button } from "../../ui/button";
+} from "../../views/ui/pagination";
+import { Button } from "../../views/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { User } from "@/types";
 import { formatDate } from "@/lib/helpers";
@@ -80,15 +80,15 @@ const UsersTable = ({
                   <TableCell className="hidden md:table-cell">{user.id}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    {user.firstName} {user.lastName}
+                    {user.first_name} {user.last_name}
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell">{user.phoneNumber}</TableCell>
-                  <TableCell className="hidden md:table-cell">{formatDate(user.createdAt)}</TableCell>
+                  <TableCell className="hidden lg:table-cell">{user.phone_number}</TableCell>
+                  <TableCell className="hidden md:table-cell">{formatDate(user.created_at)}</TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <span className={`px-2 py-1 rounded-full text-xs ${
-                      user.isInactive ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                      user.is_inactive ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
                     }`}>
-                      {user.isInactive ? 'Inactive' : 'Active'}
+                      {user.is_inactive ? 'Inactive' : 'Active'}
                     </span>
                   </TableCell>
                 </TableRow>
