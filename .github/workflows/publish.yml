@@ -44,29 +44,17 @@ jobs:
       - name: Calculate Release Version
         id: version
         run: |
-          # Get the latest tag
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0")
-          echo "Latest tag: $latest_tag"
-
-          # Parse the version
           latest_version=${latest_tag#v}
           major=$(echo "$latest_version" | cut -d. -f1)
           minor=$(echo "$latest_version" | cut -d. -f2)
-          patch=$(echo "$latest_version" | cut -d. -f3)
-
-          # Increment the minor version
-          if [ -z "$minor" ]; then
-            minor=0
-          fi
           new_minor=$((minor + 1))
-
-          # Generate new version
           new_version="${major}.${new_minor}"
-          echo "New version: $new_version"
           echo "new_version=$new_version" >> $GITHUB_ENV
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v1.1.1
+        id: create_release
         with:
           tag_name: v${{ env.new_version }}
           name: Release v${{ env.new_version }}
@@ -75,14 +63,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create artifact for apps/web
+      - name: Debug Create Release Outputs
         run: |
-          tar -czvf artifact.tar.gz apps/web/.next
+          echo "Upload URL: ${{ steps.create_release.outputs.upload_url }}"
+          echo "Release ID: ${{ steps.create_release.outputs.id }}"
+
+      - name: Create artifact for apps/web
+        run: tar -czvf artifact.tar.gz apps/web/.next
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./artifact.tar.gz
