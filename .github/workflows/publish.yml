@@ -10,7 +10,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build the project
+      - name: Build the monorepo project
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
@@ -34,10 +34,10 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
         run: npm run build
 
-      - name: Ensure .next directory exists
+      - name: Ensure .next directory exists in apps/web
         run: |
-          if [ ! -d ".next" ]; then
-            echo ".next directory does not exist. Ensure the build step completes successfully."
+          if [ ! -d "apps/web/.next" ]; then
+            echo "apps/web/.next directory does not exist. Ensure the build step completes successfully."
             exit 1
           fi
 
@@ -75,9 +75,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create artifact
+      - name: Create artifact for apps/web
         run: |
-          tar -czvf artifact.tar.gz .next
+          tar -czvf artifact.tar.gz apps/web/.next
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
