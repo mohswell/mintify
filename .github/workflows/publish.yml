@@ -53,7 +53,7 @@ jobs:
           echo "new_version=$new_version" >> $GITHUB_ENV
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1.1.1
+        uses: softprops/action-gh-release@v1
         id: create_release
         with:
           tag_name: v${{ env.new_version }}
