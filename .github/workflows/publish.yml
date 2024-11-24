@@ -20,7 +20,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18' 
+          node-version: '18'
 
       - name: Install dependencies
         run: npm install
@@ -32,13 +32,44 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
-        run: npm run build 
+        run: npm run build
+
+      - name: Ensure .next directory exists
+        run: |
+          if [ ! -d ".next" ]; then
+            echo ".next directory does not exist. Ensure the build step completes successfully."
+            exit 1
+          fi
+
+      - name: Calculate Release Version
+        id: version
+        run: |
+          # Get the latest tag
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0")
+          echo "Latest tag: $latest_tag"
+
+          # Parse the version
+          latest_version=${latest_tag#v}
+          major=$(echo "$latest_version" | cut -d. -f1)
+          minor=$(echo "$latest_version" | cut -d. -f2)
+          patch=$(echo "$latest_version" | cut -d. -f3)
+
+          # Increment the minor version
+          if [ -z "$minor" ]; then
+            minor=0
+          fi
+          new_minor=$((minor + 1))
+
+          # Generate new version
+          new_version="${major}.${new_minor}"
+          echo "New version: $new_version"
+          echo "new_version=$new_version" >> $GITHUB_ENV
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ github.run_number }}
-          name: Release ${{ github.run_number }}
+          tag_name: v${{ env.new_version }}
+          name: Release v${{ env.new_version }}
           draft: false
           prerelease: false
         env:
@@ -54,6 +85,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifact.zip
-          asset_name: artifact.zip
-          asset_content_type: application/zip
+          asset_path: ./artifact.tar.gz
+          asset_name: artifact.tar.gz
+          asset_content_type: application/gzip
