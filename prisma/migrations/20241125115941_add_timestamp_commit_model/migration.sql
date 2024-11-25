@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Commit" ALTER COLUMN "timestamp" SET DEFAULT CURRENT_TIMESTAMP;
