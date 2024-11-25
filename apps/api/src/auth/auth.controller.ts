@@ -1,16 +1,13 @@
-import { Body, Post, HttpException, HttpStatus } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Body, Post, HttpException, HttpStatus, } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { UserDto } from '~/dto';
-import { LoginDto } from '~/dto';
+import { UserDto, LoginDto, GitHubLoginDto } from '~/dto';
 import { BaseController } from '~decorators/version.decorator';
 // import { SkipThrottle, Throttle } from '@nestjs/throttler';
 
 @BaseController('auth')
 export class AuthController {
     constructor(
-        private readonly authService: AuthService,
-        private readonly configService: ConfigService,
+        private readonly authService: AuthService
     ) { }
 
     // @Throttle('short') // Applies the short throttler I defined in app.module.ts
@@ -33,4 +30,15 @@ export class AuthController {
             throw new HttpException((error as Error).message, HttpStatus.UNAUTHORIZED);
         }
     }
+
+    @Post('github-login')
+    async githubLogin(@Body() githubLoginDto: GitHubLoginDto) {
+        try {
+            const result = await this.authService.githubLogin(githubLoginDto);
+            return { ok: true, ...result };
+        } catch (error) {
+            throw new HttpException((error as Error).message, HttpStatus.UNAUTHORIZED);
+        }
+    }
 }
+
