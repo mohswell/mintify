@@ -1,26 +1,27 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '~/factories';
 import * as bcrypt from 'bcrypt';
 import { GitHubLoginDto } from '~dto';
 
 @Injectable()
 export class UserProvider {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /**
    * Find user by email with included sessions
    */
   async findUserByEmail(email: string) {
-    return this.prisma.execute(async (prisma) =>
-      prisma.user.findUnique({
-        where: { email },
-        include: { sessions: true },
-      }).then((user) =>
-        user
-          ? { ...user, id: Number(user.id) } 
-          : null
-      )
-    );
+    try {
+      const user = await this.prisma.execute(async (prisma) =>
+        prisma.user.findUnique({
+          where: { email },
+          include: { sessions: true },
+        })
+      );
+      return user ? { ...user, id: Number(user.id) } : null;
+    } catch (error) {
+      throw new InternalServerErrorException('Database query failed');
+    }
   }
 
   /**
