@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  packages: write
 
 jobs:
   release:
@@ -60,6 +61,7 @@ jobs:
           name: Release v${{ env.new_version }}
           draft: false
           prerelease: false
+          files: artifact.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -73,6 +75,8 @@ jobs:
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./artifact.tar.gz
