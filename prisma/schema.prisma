@@ -105,7 +105,7 @@ model Commit {
   id           BigInt   @id @default(autoincrement())
   commitHash   String   @unique
   message      String
-  timestamp    DateTime
+  timestamp    DateTime @default(now())
   authorEmail  String
   authorName      String  
   authorUsername  String   
