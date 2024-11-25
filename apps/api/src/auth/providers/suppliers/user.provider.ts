@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '~/factories';
 import * as bcrypt from 'bcrypt';
+import { GitHubLoginDto } from '~dto';
 
 @Injectable()
 export class UserProvider {
@@ -83,5 +84,53 @@ export class UserProvider {
         },
       })
     );
+  }
+  /**
+   * Create an oauth user or find one
+   */
+  async findUserByGitHubOrEmail(githubId: number, email: string) {
+    return this.prisma.execute(async (prisma) =>
+      prisma.user.findFirst({
+        where: {
+          OR: [
+            { githubId: githubId },
+            { email: email }
+          ]
+        },
+        include: { sessions: true }
+      }).then((user) => 
+        user ? { ...user, id: Number(user.id) } : null
+      )
+    );
+  }
+  
+  async createGitHubUser(data: GitHubLoginDto) {
+    return this.prisma.execute(async (prisma) => {
+      const user = await prisma.user.create({
+        data: {
+          email: data.email,
+          username: data.username,
+          firstName: data.name?.split(' ')[0],
+          lastName: data.name?.split(' ')[1],
+          githubId: data.githubId,
+          role: 'USER',
+          isInactive: false,
+          registrationDate: new Date(),
+          password: null, // GitHub users don't have a password
+          avatarUrl: data.avatarUrl,
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          username: true,
+          role: true,
+          isPremium: true,
+          avatarUrl: true,
+        },
+      });
+      return { ...user, id: Number(user.id) };
+    });
   }
 }
