@@ -20,12 +20,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       },
     });
 
-    // Using client extensions instead of deprecated $use
+    // Using client extensions for query logging
     const queryLoggingExtension = Prisma.defineExtension({
       name: 'queryLogging',
       query: {
         async $allOperations({ operation, model, args, query }) {
           const start = Date.now();
+          
+          // Clean up any existing prepared statements before query
+          try {
+            await this.$executeRawUnsafe('DEALLOCATE ALL');
+          } catch (e) {
+            // Ignore errors from DEALLOCATE as they're not critical
+          }
+          
           const result = await query(args);
           const duration = Date.now() - start;
           
@@ -59,6 +67,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         process.on('beforeExit', async () => {
           await this.$disconnect();
         });
+
+        // Clean up prepared statements on connection
+        await this.$executeRawUnsafe('DEALLOCATE ALL');
+        
       } catch (error) {
         retries++;
         this.logger.error(`Failed to connect to database (attempt ${retries}/${this.maxRetries}):`, error);
@@ -75,6 +87,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   async onModuleDestroy() {
     try {
+      // Clean up prepared statements before disconnecting
+      await this.$executeRawUnsafe('DEALLOCATE ALL');
       await this.$disconnect();
       this.isConnected = false;
       this.logger.log('Successfully disconnected from database');
@@ -85,6 +99,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   async resetConnection() {
     try {
+      // Clean up prepared statements before reset
+      await this.$executeRawUnsafe('DEALLOCATE ALL');
       await this.$disconnect();
       this.isConnected = false;
       await this.onModuleInit();
@@ -102,6 +118,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     } catch (error) {
       this.logger.error('Database health check failed:', error);
       return false;
+    }
+  }
+
+  // Helper method to clean up prepared statements
+  async cleanupPreparedStatements() {
+    try {
+      await this.$executeRawUnsafe('DEALLOCATE ALL');
+    } catch (error) {
+      this.logger.error('Error cleaning up prepared statements:', error);
     }
   }
 }
