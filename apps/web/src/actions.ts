@@ -1,6 +1,6 @@
 import { API_URL } from "@/lib/env";
 import { useAuthStore } from "@/stores/auth";
-import { LoginDetails, SignupDetails, Token } from "@/types";
+import { GitHubUser, LoginDetails, SignupDetails, Token } from "@/types";
 
 export const login = async (details: LoginDetails) => {
   const res = await fetch(`${API_URL}/auth/login`, {
@@ -9,6 +9,26 @@ export const login = async (details: LoginDetails) => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(details),
+  });
+
+  const data = await res.json();
+
+  return { ok: res.ok, data };
+};
+
+export const githubLogin = async (githubUser: GitHubUser) => {
+  const res = await fetch(`${API_URL}/auth/github-login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      githubId: githubUser.id,
+      email: githubUser.email,
+      username: githubUser.login,
+      name: githubUser.name,
+      avatarUrl: githubUser.avatar_url
+    }),
   });
 
   const data = await res.json();
