@@ -6,7 +6,7 @@ import { ModeToggle } from "@/components/views/ui/mode-toggle";
 export default function Footer() {
   const pathname = usePathname();
 
-  const isDashboard = pathname.startsWith("/home");
+  const isDashboard = pathname ? pathname.startsWith("/home"): false;
 
   return (
     <div className={`w-full px-4 md:px-[3%] md:py-6 py-4 flex justify-center items-center ${!isDashboard ? 'mt-24 md:mt-0' : ''}`}>
