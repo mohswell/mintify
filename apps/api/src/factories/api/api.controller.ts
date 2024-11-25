@@ -11,12 +11,17 @@ export class ApiController {
 
     // @Throttle('short') // Applies the short throttler I defined in app.module.ts
     @Post('generate')
-    async generateToken(@Body() userId: bigint) {
+    async generateToken(@Body() body: { userId: bigint }) {
         try {
-            const user = await this.apiKeyService.generateApiKey(userId);
-            return { message: 'User created successfully', user };
+            const userId = BigInt(body.userId); // Ensure bigint type
+            const apiKey = await this.apiKeyService.generateApiKey(userId);
+            return { message: 'API key generated successfully', apiKey };
         } catch (error) {
-            throw new HttpException((error as Error).message, HttpStatus.INTERNAL_SERVER_ERROR);
+            console.error('Error generating API key:', error);
+            throw new HttpException(
+                (error as Error).message || 'Internal server error',
+                HttpStatus.INTERNAL_SERVER_ERROR,
+            );
         }
     }
 }
