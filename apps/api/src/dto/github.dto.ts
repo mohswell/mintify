@@ -7,6 +7,7 @@ export class CommitDTO {
     committerEmail: string;
     committerName: string;
     date: string;
+    timestamp?: string;
     stats?: {
         additions: number;
         deletions: number;
