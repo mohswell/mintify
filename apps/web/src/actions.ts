@@ -2,7 +2,6 @@ import { API_URL } from "@/lib/env";
 import { useAuthStore } from "@/stores/auth";
 import { LoginDetails, SignupDetails, Token } from "@/types";
 
-
 export const login = async (details: LoginDetails) => {
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
@@ -113,4 +112,25 @@ export const sendInviteEmail = async (email: string) => {
   } catch (error: any) {
     throw new Error(error.message || 'An error occurred while sending the invite');
   }
+};
+
+export const generateAccessToken = async () => {
+  const user = useAuthStore.getState().user;
+  const token = useAuthStore.getState().token;
+
+  if (!user?.id) {
+    throw new Error('User not authenticated');
+  }
+
+  const res = await fetch(`${API_URL}/access-token/generate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ userId: user.id }),
+  });
+
+  const data = await res.json();
+  return { ok: res.ok, data };
 };
