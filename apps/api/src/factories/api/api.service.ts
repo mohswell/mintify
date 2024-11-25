@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
 
 interface ApiKeyPayload {
     key: string;
-    userId?: bigint;
+    userId?: string | bigint;
     createdAt?: Date;
 }
 
@@ -15,7 +15,7 @@ interface DecodedToken {
     sub?: string | number;
     [key: string]: any;
     userId?: bigint;
-  }
+}
 
 @Injectable()
 export class ApiKeyService {
@@ -26,31 +26,41 @@ export class ApiKeyService {
 
     // Generate an API key for the user
     async generateApiKey(userId: bigint): Promise<string> {
-        const key = randomBytes(32).toString('hex'); // Generate a 64-character API key
         const jwtSecret = this.configService.get<string>('JWT_SECRET');
+        if (!jwtSecret) {
+            throw new Error('JWT_SECRET is not defined in environment variables');
+        }
 
-        const payload: ApiKeyPayload = { 
-            key, 
-            userId, 
-            createdAt: new Date() 
+        const key = randomBytes(32).toString('hex');
+        const payload: ApiKeyPayload = {
+            key,
+            userId: userId.toString(), // Convert BigInt to string
+            createdAt: new Date()
         };
 
         const apiKey = jwt.sign(payload, jwtSecret);
-        await this.prisma.apiKey.create({
-            data: {
-                userId,
-                apiKey,
-            },
-        });
+
+        try {
+            await this.prisma.apiKey.create({
+                data: {
+                    userId,
+                    apiKey,
+                },
+            });
+        } catch (error) {
+            throw new Error(`Failed to save API key to database: ${(error as Error).message}`);
+        }
 
         return apiKey;
     }
+
+
 
     // Verify the API key
     async verifyApiKey(apiKey: string): Promise<boolean> {
         try {
             const jwtSecret = this.configService.get<string>('JWT_SECRET');
-            const decoded = jwt.verify(apiKey, jwtSecret) as  ApiKeyPayload;
+            const decoded = jwt.verify(apiKey, jwtSecret) as ApiKeyPayload;
 
             const key = await this.prisma.apiKey.findUnique({
                 where: { apiKey },
@@ -115,7 +125,7 @@ export class ApiKeyService {
 
             // Fetch user associated with the API key
             const user = await this.prisma.user.findUnique({
-                where: { id: apiKeyPayload.userId },
+                where: { id: BigInt(apiKeyPayload.userId) },
                 select: {
                     id: true,
                     email: true,
