@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   Body,
-  Controller,
   Post,
   UploadedFile,
   UploadedFiles,
@@ -13,9 +12,10 @@ import { GeminiService } from '~gemini/application/gemini.service';
 import { GenAiResponse } from '~gemini/domain/interface/response.interface';
 import { GenerateTextDto } from './dto/generate-text.dto';
 import { fileValidatorPipe } from './validation/file-validator.pipe';
+import { BaseController } from '~decorators/version.decorator';
 
 @ApiTags('Gemini')
-@Controller('gemini')
+@BaseController('gemini')
 export class GeminiController {
   constructor(private service: GeminiService) {}
 
