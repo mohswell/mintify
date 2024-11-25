@@ -37,6 +37,7 @@ model User {
   isInactive Boolean @default(false)
   apiKeys     ApiKey[]
   sessions    Session[]
+  pullRequests  PullRequest[]
   phone               String?
   aiUserToken         String?
   role                UserRole  @default(USER)
@@ -66,4 +67,82 @@ model Session {
   createdAt   DateTime  @default(now())
   expiresAt   DateTime
   user        User      @relation(fields: [userId], references: [id])
+}
+
+model PullRequest {
+  id                BigInt   @id @default(autoincrement())
+  prNumber          Int      @unique
+  title             String
+  description       String
+  author           String
+  authorUsername    String   
+  authorAvatar     String   
+  url              String
+  baseBranch       String
+  headBranch       String
+  baseRepository   String   
+  headRepository   String   
+  status           PRStatus @default(OPEN)
+  isDraft          Boolean  @default(false)
+  labels           String[] 
+  reviewers        String[] 
+  comments         Int      
+  additions        Int      
+  deletions        Int     
+  changedFiles     Int      
+  mergeable        Boolean?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  closedAt         DateTime? 
+  mergedAt         DateTime? 
+  commits          Commit[]
+  analyzedFiles    FileAnalysis[]
+  userId           BigInt
+  user             User     @relation(fields: [userId], references: [id])
+}
+
+model Commit {
+  id           BigInt   @id @default(autoincrement())
+  commitHash   String   @unique
+  message      String
+  timestamp    DateTime @default(now())
+  authorEmail  String
+  authorName      String  
+  authorUsername  String   
+  committerEmail  String   
+  committerName   String   
+  stats          CommitStats?
+  date         DateTime
+  pullRequestId BigInt
+  pullRequest  PullRequest @relation(fields: [pullRequestId], references: [id])
+}
+
+model CommitStats {
+  id              BigInt   @id @default(autoincrement())
+  additions       Int
+  deletions       Int
+  changedFiles    Int
+  commitId        BigInt   @unique
+  commit          Commit   @relation(fields: [commitId], references: [id])
+}
+
+model FileAnalysis {
+  id              BigInt   @id @default(autoincrement())
+  filePath        String
+  diff            String
+  analysisResults String
+  additions       Int      
+  deletions       Int      
+  status          String   
+  previousPath    String?  
+  language        String?
+  analyzedAt      DateTime @default(now())
+  pullRequestId   BigInt
+  pullRequest     PullRequest @relation(fields: [pullRequestId], references: [id])
+}
+
+enum PRStatus {
+  OPEN
+  MERGED
+  CLOSED
 }
