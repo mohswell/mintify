@@ -2,12 +2,12 @@ export class CommitDTO {
     sha: string;
     message: string;
     authorEmail: string;
-    authorName: string;      
-    authorUsername: string;  
-    committerEmail: string;  
-    committerName: string;   
+    authorName: string;
+    authorUsername: string;
+    committerEmail: string;
+    committerName: string;
     date: string;
-    stats?: {               
+    stats?: {
         additions: number;
         deletions: number;
         changedFiles: number;
@@ -21,23 +21,24 @@ export class PullRequestDTO {
     prUrl: string;
     baseBranch: string;
     headBranch: string;
-    baseRepository: string;  
-    headRepository: string;  
-    authorUsername: string;  
-    authorAvatar: string;   
-    isDraft: boolean;       
-    labels: string[];       
-    reviewers: string[];    
-    stats: {               
+    description?: string;
+    baseRepository: string;
+    headRepository: string;
+    authorUsername: string;
+    authorAvatar: string;
+    isDraft: boolean;
+    labels: string[];
+    reviewers: string[];
+    stats: {
         comments: number;
         additions: number;
         deletions: number;
         changedFiles: number;
     };
-    mergeable: boolean;     
-    createdAt: string;      
-    updatedAt: string;      
-    closedAt?: string;      
-    mergedAt?: string;      
+    mergeable: boolean;
+    createdAt: string;
+    updatedAt: string;
+    closedAt?: string;
+    mergedAt?: string;
     commits: CommitDTO[];
 }
