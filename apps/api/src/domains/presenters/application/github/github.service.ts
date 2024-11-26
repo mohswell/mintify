@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PullRequestDTO, CommitDTO } from '~dto';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { PullRequestDTO, CommitDTO, PullRequestResponseDTO } from '~dto';
 import { PrismaService } from '~factories';
 
 @Injectable()
@@ -99,6 +99,63 @@ export class GithubService {
         } catch (error) {
             this.logger.error(`Error storing Pull Request data: ${(error as any).message}`, (error as any).stack);
             throw error;
+        }
+    }
+
+    async getPullRequestsForUser(userId: bigint): Promise<PullRequestResponseDTO[]> {
+        try {
+            const pullRequests = await this.prisma.pullRequest.findMany({
+                where: { userId },
+                include: {
+                    commits: {
+                        include: {
+                            stats: true
+                        },
+                        orderBy: {
+                            date: 'desc'
+                        }
+                    }
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                }
+            });
+
+            return pullRequests.map(pr => ({
+                id: pr.id,
+                prNumber: pr.prNumber,
+                title: pr.title,
+                author: pr.author,
+                authorUsername: pr.authorUsername,
+                url: pr.url,
+                baseBranch: pr.baseBranch,
+                headBranch: pr.headBranch,
+                status: pr.status,
+                isDraft: pr.isDraft,
+                labels: pr.labels,
+                createdAt: pr.createdAt,
+                stats: {
+                    additions: pr.additions,
+                    deletions: pr.deletions,
+                    changedFiles: pr.changedFiles
+                },
+                commits: pr.commits.map(commit => ({
+                    id: commit.id,
+                    commitHash: commit.commitHash,
+                    message: commit.message,
+                    authorName: commit.authorName,
+                    authorEmail: commit.authorEmail,
+                    date: commit.date,
+                    stats: commit.stats ? {
+                        additions: commit.stats.additions,
+                        deletions: commit.stats.deletions,
+                        changedFiles: commit.stats.changedFiles
+                    } : undefined
+                }))
+            }));
+        } catch (error) {
+            this.logger.error(`Error fetching pull requests: ${(error as any).message}`, (error as any).stack);
+            throw new NotFoundException('Could not fetch pull requests');
         }
     }
 }
