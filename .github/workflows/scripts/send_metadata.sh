@@ -61,13 +61,13 @@ metadata=$(jq -n \
   }" \
   --argjson commits "$commit_json" \
   '{
-    pr_number: $pr_number,
-    pr_title: $pr_title,
-    pr_author: $pr_author,
+    prNumber: $pr_number,
+    prTitle: $pr_title,
+    prAuthor: $pr_author,
     description: $description,
     authorUsername: $author_username,
     authorAvatar: $author_avatar,
-    url: $pr_url,
+    prUrl: $pr_url,
     baseBranch: $base_branch,
     headBranch: $head_branch,
     baseRepository: $base_repository,
