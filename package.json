@@ -73,6 +73,7 @@
     "class-validator": "0.14.1",
     "class-variance-authority": "^0.7.0",
     "compression": "1.7.5",
+    "date-fns": "^4.1.0",
     "dotenv": "^16.4.5",
     "esbuild": "^0.19.12",
     "next-auth": "^4.24.10",

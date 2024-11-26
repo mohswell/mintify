@@ -12,6 +12,7 @@ import { GeminiModule } from './gemini/gemini.module';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from '~factories';
 import { ApiModule } from '~factories/api/api.module';
+import { GithubModule } from '~domains/github/github.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { ApiModule } from '~factories/api/api.module';
     AuthModule,
     PrismaModule,
     ApiModule,
+    GithubModule,
   ],
   controllers: [AppController],
   providers: [
