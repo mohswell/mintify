@@ -17,7 +17,7 @@ for commit in ${COMMIT_HISTORY}; do
   commit_list+=("{
     \"sha\":\"$sha\",
     \"message\":\"$message\",
-    \"author_email\":\"$email\",
+    \"author_email\":\"$author_email\",
     \"author_name\":\"$author_name\",
     \"committer_email\":\"$committer_email\",
     \"committer_name\":\"$committer_name\",
