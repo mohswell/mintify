@@ -19,12 +19,25 @@ generate_tests() {
   local file_content=$(cat "$file")
   local escaped_content=$(echo "$file_content" | jq -sR .)
   
-  curl -s -X POST "${BASE_APP_URL}/gemini/generate-tests" \
+  # Send request to test generation service
+  local response=$(curl -s -X POST "${BASE_APP_URL}/gemini/generate-tests" \
     -H "Authorization: Bearer ${API_KEY}" \
     -H "Content-Type: application/json" \
-    -d "{\"code\": ${escaped_content}}"
+    -d "{\"code\": ${escaped_content}}")
+  
+  # Extract the test code from the response
+  # Assumes the response follows the format from TestFormatterService
+  local test_code=$(echo "$response" | grep -oP '(?<=```typescript\n)[\s\S]*?(?=\n```)')
+  
+  # If no test code found, use the entire response
+  if [ -z "$test_code" ]; then
+    test_code="$response"
+  fi
+  
+  echo "$test_code"
 }
 
+# Process different comment triggers
 case "$COMMENT_BODY" in
   "/approve")
     echo "Feedback: Approved"
@@ -77,7 +90,7 @@ No changes have been applied. Please review the feedback and make necessary adju
         if [ -n "$test_response" ]; then
           test_results="${test_results}
 ## Tests for \`$file\`
-\`\`\`javascript
+\`\`\`typescript
 ${test_response}
 \`\`\`
 "
