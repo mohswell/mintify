@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsOptional, IsNumber, IsString } from 'class-validator';
 
 export class LoginDto {
   @IsEmail()
@@ -9,4 +9,22 @@ export class LoginDto {
 
   @IsOptional()
   username?: string;
+}
+
+export class GitHubLoginDto {
+  @IsNumber()
+  githubId: number;
+
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  username: string;
+
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsOptional()
+  avatarUrl?: string;
 }

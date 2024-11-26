@@ -75,6 +75,14 @@ export interface PaginationControlsProps {
   onNextPage: () => void;
 }
 
+export interface GitHubUser {
+  id: number;
+  login: string;
+  name: string;
+  email: string;
+  avatar_url: string;
+}
+
 export const API_URL = assertValue(
   process.env.NEXT_PUBLIC_API_BASE_URL,
   "Missing environment variable: NEXT_PUBLIC_API_BASE_URL",

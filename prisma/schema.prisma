@@ -46,6 +46,8 @@ model User {
   registrationDate    DateTime?
   isActive            Boolean   @default(true)
   aiModelVersion      String?
+  githubId   BigInt?  @unique
+  avatarUrl  String?
 }
 
 enum ApiKeyStatus {

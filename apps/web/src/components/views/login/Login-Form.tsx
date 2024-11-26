@@ -18,13 +18,14 @@ import {
 } from "../ui/form";
 import { useState } from "react";
 import { useAuthStore } from "@/stores/auth";
-import { login } from "@/actions";
+import { login, githubLogin } from "@/actions";
 import { Loader } from "lucide-react";
 import { IconBrandGithub } from "@tabler/icons-react";
 import notification from "@/lib/notification";
 import Cookies from "js-cookie";
 import { SESSION_NAME } from "@/lib/constants";
-import { signIn } from "next-auth/react";
+import { supabase } from "@/auth/config/supabase";
+import { GitHubUser } from "@/types";
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -77,19 +78,57 @@ export default function LoginForm() {
 
   const handleGitHubLogin = async () => {
     setIsLoading(true);
-    try {
-      const result = await signIn('github', { redirect: false });
 
-      if (result?.error) {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "github",
+        options: { scopes: "user:email" }
+      });
+
+      if (error) {
         notification({
           type: "error",
-          message: "GitHub login failed. Please try again."
+          message: "GitHub login failed. Please try again.",
         });
+        return;
+      }
+
+      const githubSession = await supabase.auth.getSession();
+
+      if (githubSession.data.session) {
+        const githubAccessToken = githubSession.data.session.provider_token;
+
+        const userResponse = await fetch('https://api.github.com/user', {
+          headers: { 'Authorization': `Bearer ${githubAccessToken}` }
+        });
+
+        const githubUser: GitHubUser = await userResponse.json();
+
+        const result = await githubLogin(githubUser);
+
+        if (result.ok) {
+          setToken(result.data.token);
+          setUser(result.data.user);
+
+          Cookies.set(SESSION_NAME, result.data.token, {
+            secure: true,
+            sameSite: 'strict'
+          });
+
+          notification({ message: "GitHub login successful!" });
+          router.push("/home");
+        } else {
+          notification({
+            type: "error",
+            message: result.data.message || "GitHub login failed"
+          });
+        }
       }
     } catch (error) {
+      console.error('GitHub login error:', error);
       notification({
         type: "error",
-        message: "An error occurred during GitHub login"
+        message: "An unexpected error occurred"
       });
     } finally {
       setIsLoading(false);
