@@ -1,9 +1,12 @@
-import { Body, HttpException, HttpStatus, Post, Req } from '@nestjs/common';
+import { Body, ClassSerializerInterceptor, Get, HttpException, HttpStatus, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { BaseController } from '~decorators/version.decorator';
-import { PullRequestDTO } from '~dto';
+import { PullRequestDTO, PullRequestResponseDTO } from '~dto';
 import { GithubService } from '../application/github/github.service';
+import { ApiResponse, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('github')
 @BaseController('github')
+@UseInterceptors(ClassSerializerInterceptor)
 export class GithubController {
     constructor(private readonly githubService: GithubService) { }
 
@@ -28,5 +31,16 @@ export class GithubController {
             );
         }
 
+    }
+
+    @Get('pull-requests')
+    @ApiResponse({ 
+        status: 200, 
+        description: 'List of pull requests for the authenticated user',
+        type: [PullRequestResponseDTO]
+    })
+    async getPullRequests(@Req() req): Promise<PullRequestResponseDTO[]> {
+        const userId = req.user.id;
+        return this.githubService.getPullRequestsForUser(userId);
     }
 }
