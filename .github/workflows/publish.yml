@@ -45,13 +45,31 @@ jobs:
       - name: Calculate Release Version
         id: version
         run: |
-          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0")
+          # Get the latest tag or fallback to "v0.0.0"
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           latest_version=${latest_tag#v}
+
+          # Parse major, minor, patch
           major=$(echo "$latest_version" | cut -d. -f1)
           minor=$(echo "$latest_version" | cut -d. -f2)
+          patch=$(echo "$latest_version" | cut -d. -f3)
+
+          # Increment minor version (you can customize this logic)
           new_minor=$((minor + 1))
-          new_version="${major}.${new_minor}"
+          new_version="${major}.${new_minor}.0"
+
+          # Set the new version in the environment
           echo "new_version=$new_version" >> $GITHUB_ENV
+          echo "New version: $new_version"
+
+      - name: Push New Tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag -a "v${{ env.new_version }}" -m "Release v${{ env.new_version }}"
+          git push origin "v${{ env.new_version }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
