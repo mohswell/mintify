@@ -98,7 +98,18 @@ jobs:
           echo "PR_MERGED_AT=$(echo $pr_details | jq -r .merged_at)" >> $GITHUB_ENV
   
       - name: Save Pull Request Metadata and user information to server
-        run: bash .github/workflows/scripts/send_metadata.sh
+        run: |
+          # Ensure all required environment variables are set
+          export PR_DRAFT="${PR_DRAFT:-false}"
+          export PR_LABELS="${PR_LABELS:-}"
+          export PR_REVIEWERS="${PR_REVIEWERS:-}"
+          export PR_COMMENTS="${PR_COMMENTS:-0}"
+          export PR_ADDITIONS="${PR_ADDITIONS:-0}"
+          export PR_DELETIONS="${PR_DELETIONS:-0}"
+          export PR_CHANGED_FILES="${PR_CHANGED_FILES:-0}"
+          export PR_MERGEABLE="${PR_MERGEABLE:-null}"
+          
+          bash .github/workflows/scripts/send_metadata.sh
         env:
           BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
           API_KEY: ${{ secrets.API_KEY }}

@@ -92,7 +92,7 @@ export class AuthService {
 
       // If user doesn't exist, create a new user
       if (!user) {
-        user = await this.userProvider.createGitHubUser(githubLoginDto);
+        user = await this.userProvider.createGitHubUser(githubLoginDto) as any;
       }
 
       // Create JWT payload

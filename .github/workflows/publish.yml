@@ -73,12 +73,13 @@ jobs:
       - name: Create artifact for apps/web
         run: tar -czvf artifact.tar.gz apps/web/.next
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifact.tar.gz
-          asset_name: artifact.tar.gz
-          asset_content_type: application/gzip
+      # TODO: Uncomment the following block once issues are fixed regarding null upload_url to the release asset
+      # - name: Upload Release Asset
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+      #   with:
+      #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+      #     asset_path: ./artifact.tar.gz
+      #     asset_name: artifact.tar.gz
+      #     asset_content_type: application/gzip

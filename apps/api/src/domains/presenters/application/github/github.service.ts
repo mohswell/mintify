@@ -1,78 +1,104 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PullRequestDTO, CommitDTO } from '~dto';
 import { PrismaService } from '~factories';
 
 @Injectable()
 export class GithubService {
+    private readonly logger = new Logger(GithubService.name);
+
     constructor(private readonly prisma: PrismaService) {}
 
     async storePullRequestData(dto: PullRequestDTO, userId: bigint) {
-        const { commits, stats, ...prData } = dto;
+        this.logger.log('Attempting to store Pull Request data');
+        this.logger.log(JSON.stringify(dto, null, 2));
 
-        const pullRequest = await this.prisma.pullRequest.create({
-            data: {
-                prNumber: prData.prNumber,
-                title: prData.prTitle,
-                description: prData.description,
-                author: prData.prAuthor,
-                authorUsername: prData.authorUsername,
-                authorAvatar: prData.authorAvatar,
-                url: prData.prUrl,
-                baseBranch: prData.baseBranch,
-                headBranch: prData.headBranch,
-                baseRepository: prData.baseRepository,
-                headRepository: prData.headRepository,
-                isDraft: prData.isDraft,
-                labels: prData.labels,
-                reviewers: prData.reviewers,
-                comments: stats.comments,
-                additions: stats.additions,
-                deletions: stats.deletions,
-                changedFiles: stats.changedFiles,
-                mergeable: prData.mergeable,
-                createdAt: new Date(prData.createdAt),
-                updatedAt: prData.updatedAt ? new Date(prData.updatedAt) : null,
-                closedAt: prData.closedAt ? new Date(prData.closedAt) : null,
-                mergedAt: prData.mergedAt ? new Date(prData.mergedAt) : null,
-                user: {
-                    connect: { id: userId }, // Connect the pr to the user
+        try {
+            const { commits, stats, ...prData } = dto;
+
+            // Validate required fields
+            if (!prData.prNumber) {
+                throw new Error('Pull Request number is required');
+            }
+
+            const pullRequest = await this.prisma.pullRequest.create({
+                data: {
+                    prNumber: prData.prNumber,
+                    title: prData.prTitle,
+                    description: prData.description || '',
+                    author: prData.prAuthor,
+                    authorUsername: prData.authorUsername || prData.prAuthor,
+                    authorAvatar: prData.authorAvatar || '',
+                    url: prData.prUrl,
+                    baseBranch: prData.baseBranch,
+                    headBranch: prData.headBranch,
+                    baseRepository: prData.baseRepository,
+                    headRepository: prData.headRepository,
+                    isDraft: prData.isDraft || false,
+                    labels: prData.labels || [],
+                    reviewers: prData.reviewers || [],
+                    comments: stats.comments || 0,
+                    additions: stats.additions || 0,
+                    deletions: stats.deletions || 0,
+                    changedFiles: stats.changedFiles || 0,
+                    mergeable: prData.mergeable ?? null,
+                    createdAt: new Date(prData.createdAt),
+                    updatedAt: prData.updatedAt ? new Date(prData.updatedAt) : undefined,
+                    closedAt: prData.closedAt ? new Date(prData.closedAt) : undefined,
+                    mergedAt: prData.mergedAt ? new Date(prData.mergedAt) : undefined,
+                    userId: userId,
                 },
-            },
-        });
+            });
 
-        if (commits && commits.length > 0) {
-            await Promise.all(
-                commits.map(async (commit: CommitDTO) => {
-                    // First, create the Commit
-                    const createdCommit = await this.prisma.commit.create({
-                        data: {
-                            commitHash: commit.sha,
-                            message: commit.message,
-                            authorEmail: commit.authorEmail,
-                            authorName: commit.authorName,
-                            authorUsername: commit.authorUsername,
-                            committerEmail: commit.committerEmail,
-                            committerName: commit.committerName,
-                            date: new Date(commit.date),
-                            pullRequest: {
-                                connect: { id: pullRequest.id },
-                            },
-                        },
-                    });
-                    if (commit.stats) {
-                        await this.prisma.commitStats.create({
+            this.logger.log(`Pull Request created with ID: ${pullRequest.id}`);
+
+            if (commits && commits.length > 0) {
+                const commitPromises = commits.map(async (commit: CommitDTO) => {
+                    try {
+                        // Validate commit data
+                        if (!commit.sha) {
+                            this.logger.warn(`Skipping commit with no SHA: ${JSON.stringify(commit)}`);
+                            return null;
+                        }
+
+                        const createdCommit = await this.prisma.commit.create({
                             data: {
-                                additions: commit.stats.additions,
-                                deletions: commit.stats.deletions,
-                                changedFiles: commit.stats.changedFiles,
-                                commitId: createdCommit.id, 
+                                commitHash: commit.sha,
+                                message: commit.message || '',
+                                authorEmail: commit.authorEmail || '',
+                                authorName: commit.authorName || '',
+                                authorUsername: commit.authorUsername || '',
+                                committerEmail: commit.committerEmail || '',
+                                committerName: commit.committerName || '',
+                                date: new Date(commit.date),
+                                pullRequestId: pullRequest.id,
                             },
                         });
-                    }
-                }),
-            );
-        }
 
-        return pullRequest;
+                        if (commit.stats) {
+                            await this.prisma.commitStats.create({
+                                data: {
+                                    additions: commit.stats.additions || 0,
+                                    deletions: commit.stats.deletions || 0,
+                                    changedFiles: commit.stats.changedFiles || 0,
+                                    commitId: createdCommit.id,
+                                },
+                            });
+                        }
+
+                        return createdCommit;
+                    } catch (commitError) {
+                        this.logger.error(`Error processing commit: ${(commitError as any).message}`, (commitError as any).stack);
+                        return null;
+                    }
+                });
+
+                await Promise.all(commitPromises);
+            }
+
+            return pullRequest;
+        } catch (error) {
+            this.logger.error(`Error storing Pull Request data: ${(error as any).message}`, (error as any).stack);
+            throw error;
+        }
     }
 }
