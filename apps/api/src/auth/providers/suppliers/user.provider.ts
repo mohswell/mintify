@@ -129,6 +129,10 @@ export class UserProvider {
           role: true,
           isPremium: true,
           avatarUrl: true,
+          isAdmin: true,
+          isInactive: true,
+          sessions: true,
+          password: true,
         },
       });
       return { ...user, id: Number(user.id) };
