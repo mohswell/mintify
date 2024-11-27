@@ -8,11 +8,11 @@ import { LogoFull } from "./LogoFull";
 import {
   Bell,
   Home,
-  LineChart,
+  BarChart,
   Package,
-  Package2,
+  GitPullRequest,
   ShoppingCart,
-  Users,
+  Key,
 } from "lucide-react";
 import { Button } from "./button";
 import {
@@ -26,30 +26,31 @@ import {
 export const navItems = [
   {
     label: "Dashboard",
-    href: "/admin",
+    href: "/home",
     icon: <Home className="h-5 w-5" />,
   },
   {
-    label: "Orders",
-    href: "/admin/orders",
-    icon: <ShoppingCart className="h-5 w-5" />,
+    label: "Pull Requests",
+    href: "/home/code",
+    icon: <GitPullRequest className="h-5 w-5" />,
   },
   {
-    label: "Products",
-    href: "/admin/products",
-    icon: <Package className="h-5 w-4" />,
+    label: "Usage",
+    href: "/home/usage",
+    icon: <Package className="h-5 w-5" />,
   },
+  // {
+  //   label: "Access Token",
+  //   href: "/home/access-tokens",
+  //   icon: <Key className="h-5 w-5" />,
+  // },
   {
-    label: "Users",
-    href: "/admin/users",
-    icon: <Users className="h-5 w-5" />,
-  },
-  {
-    label: "Analytics",
-    href: "/admin/analytics",
-    icon: <LineChart className="h-5 w-5" />,
+    label: "AI Analysis",
+    href: "/home/analytics",
+    icon: <BarChart className="h-5 w-5" />,
   },
 ];
+
 
 export default function Sidebar() {
   const pathname = usePathname();
