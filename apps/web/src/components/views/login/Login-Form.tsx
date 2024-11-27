@@ -29,7 +29,7 @@ import { GitHubUser } from "@/types";
 
 const formSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8).max(50),
+  password: z.string().min(4).max(50),
 });
 
 export default function LoginForm() {
@@ -82,7 +82,10 @@ export default function LoginForm() {
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "github",
-        options: { scopes: "user:email" }
+        options: {
+          scopes: "user:email",
+          redirectTo: `${window.location.origin}/auth/callback/github`
+        }
       });
 
       if (error) {
@@ -90,45 +93,14 @@ export default function LoginForm() {
           type: "error",
           message: "GitHub login failed. Please try again.",
         });
+        console.error('GitHub OAuth initiation error:', error);
         return;
-      }
-
-      const githubSession = await supabase.auth.getSession();
-
-      if (githubSession.data.session) {
-        const githubAccessToken = githubSession.data.session.provider_token;
-
-        const userResponse = await fetch('https://api.github.com/user', {
-          headers: { 'Authorization': `Bearer ${githubAccessToken}` }
-        });
-
-        const githubUser: GitHubUser = await userResponse.json();
-
-        const result = await githubLogin(githubUser);
-
-        if (result.ok) {
-          setToken(result.data.token);
-          setUser(result.data.user);
-
-          Cookies.set(SESSION_NAME, result.data.token, {
-            secure: true,
-            sameSite: 'strict'
-          });
-
-          notification({ message: "GitHub login successful!" });
-          router.push("/home");
-        } else {
-          notification({
-            type: "error",
-            message: result.data.message || "GitHub login failed"
-          });
-        }
       }
     } catch (error) {
       console.error('GitHub login error:', error);
       notification({
         type: "error",
-        message: "An unexpected error occurred"
+        message: "An unexpected error occurred during GitHub login"
       });
     } finally {
       setIsLoading(false);
