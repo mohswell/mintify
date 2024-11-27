@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '~/factories';
 import * as bcrypt from 'bcrypt';
 import { GitHubLoginDto } from '~dto';
@@ -99,20 +99,38 @@ export class UserProvider {
           ]
         },
         include: { sessions: true }
-      }).then((user) => 
+      }).then((user) =>
         user ? { ...user, id: Number(user.id) } : null
       )
     );
   }
-  
+
   async createGitHubUser(data: GitHubLoginDto) {
     return this.prisma.execute(async (prisma) => {
+      const existingUser = await prisma.user.findUnique({
+        where: { email: data.email },
+        select: { id: true, githubId: true }
+      });
+
+      // If user exists and is not already a GitHub user, throw an error
+      if (existingUser && !existingUser.githubId) {
+        throw new ConflictException('Email already registered with a different authentication method');
+      }
+      
+      if (existingUser && existingUser.githubId) {
+        return {
+          ...existingUser,
+          id: Number(existingUser.id)
+        };
+      }
+
+      // If no existing user, create a new user
       const user = await prisma.user.create({
         data: {
           email: data.email,
           username: data.username,
           firstName: data.name?.split(' ')[0],
-          lastName: data.name?.split(' ')[1],
+          lastName: data.name?.split(' ')[1] ?? 'Dev',
           githubId: data.githubId,
           role: 'USER',
           isInactive: false,
