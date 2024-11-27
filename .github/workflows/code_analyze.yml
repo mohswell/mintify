@@ -52,22 +52,23 @@ jobs:
 
       - name: Fetch branches
         run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }}:${
-            { github.event.pull_request.base.ref }} \
-              ${{ github.event.pull_request.head.ref }}:${
-            { github.event.pull_request.head.ref }}
+          git fetch origin ${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}
+          git fetch origin ${{ github.event.pull_request.head.ref }}:refs/remotes/origin/${{ github.event.pull_request.head.ref }}
 
       - name: Fetch Commit History
         run: |
           if git rev-parse refs/remotes/origin/${{ github.event.pull_request.base.ref }} >/dev/null 2>&1 && \
-               git rev-parse refs/remotes/origin/${{ github.event.pull_request.head.ref }} >/dev/null 2>&1; then
-              commits=$(git log --pretty=format:'%H|%s|%ae|%an|%ce|%cn|%ad' \
-                       refs/remotes/origin/${{ github.event.pull_request.base.ref }}..refs/remotes/origin/${{ github.event.pull_request.head.ref }})
-            else
-              echo "Unable to fetch commit history." >&2
-              exit 1
-            fi
-            echo "COMMIT_HISTORY=$commits" >> $GITHUB_ENV
+             git rev-parse refs/remotes/origin/${{ github.event.pull_request.head.ref }} >/dev/null 2>&1; then
+            commits=$(git log --pretty=format:'%H|%s|%ae|%an|%ce|%cn|%ad' \
+                     refs/remotes/origin/${{ github.event.pull_request.base.ref }}..refs/remotes/origin/${{ github.event.pull_request.head.ref }})
+          else
+            echo "Unable to fetch commit history." >&2
+            exit 1
+          fi
+          echo "COMMIT_HISTORY=$commits" >> $GITHUB_ENV
+
+      - name: Print Commit History for debugging
+        run: echo "$COMMIT_HISTORY"
 
       - name: Set PR Environment Variables
         run: |
