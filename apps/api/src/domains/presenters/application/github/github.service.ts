@@ -11,18 +11,22 @@ export class GithubService {
     async storePullRequestData(dto: PullRequestDTO, userId: bigint) {
         this.logger.log('Attempting to store Pull Request data');
         this.logger.log(JSON.stringify(dto, null, 2));
+        const prNumber = Number(dto.prNumber);
+        if (isNaN(prNumber)) {
+            throw new Error('Pull Request number must be a number');
+        }
 
         try {
             const { commits, stats, ...prData } = dto;
 
             // Validate required fields
-            if (!prData.prNumber) {
+            if (!prNumber) {
                 throw new Error('Pull Request number is required');
             }
 
             const pullRequest = await this.prisma.pullRequest.create({
                 data: {
-                    prNumber: prData.prNumber,
+                    prNumber: prNumber,
                     title: prData.prTitle,
                     description: prData.description || '',
                     author: prData.prAuthor,
@@ -52,6 +56,7 @@ export class GithubService {
             this.logger.log(`Pull Request created with ID: ${pullRequest.id}`);
 
             if (commits && commits.length > 0) {
+                this.logger.log(`Processing ${commits.length} commits`);
                 const commitPromises = commits.map(async (commit: CommitDTO) => {
                     try {
                         // Validate commit data
@@ -97,6 +102,7 @@ export class GithubService {
 
             return pullRequest;
         } catch (error) {
+            this.logger.warn('No commits found for the pull request');
             this.logger.error(`Error storing Pull Request data: ${(error as any).message}`, (error as any).stack);
             throw error;
         }
