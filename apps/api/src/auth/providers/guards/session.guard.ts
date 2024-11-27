@@ -3,15 +3,28 @@ import { PrismaService } from '~/factories';
 
 @Injectable()
 export class SessionGuard {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async createSession(userId: bigint, token: string, expiresAt: Date) {
-    return this.prisma.session.create({
-      data: {
-        userId,
-        token,
-        expiresAt,
-      },
+    return this.prisma.execute(async (prisma) => {
+      const existingSession = await prisma.session.findFirst({
+        where: { userId },
+      });
+
+      // If session exists, update it instead of creating a new one
+      if (existingSession) {
+        return prisma.session.update({
+          where: { id: existingSession.id },
+          data: { token, expiresAt },
+        });
+      }
+      return this.prisma.session.create({
+        data: {
+          userId,
+          token,
+          expiresAt,
+        },
+      });
     });
   }
 
