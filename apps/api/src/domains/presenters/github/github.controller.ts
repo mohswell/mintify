@@ -11,7 +11,8 @@ export class GithubController {
     constructor(private readonly githubService: GithubService) { }
 
     @Post('store-data')
-    async storeData(@Req() req: any, @Body() prMetadata: PullRequestDTO) {
+    async storeData(@Req() req: any, @Body() prMetadata: any) {
+        console.log('Received request to store Pull Request data', req.body);
         try {
             const user = req.user;
             const userId = user.id;
@@ -21,6 +22,7 @@ export class GithubController {
                 data: result,
             };
         } catch (error) {
+            console.error('Error storing pull request data:', error);
             throw new HttpException(
                 {
                     status: HttpStatus.INTERNAL_SERVER_ERROR,
