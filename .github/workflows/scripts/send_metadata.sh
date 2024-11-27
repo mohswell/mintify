@@ -90,7 +90,10 @@ metadata=$(jq -n \
   }')
 
 
+echo "Commit JSON: $commit_json"
+echo "Metadata: $metadata"
+
 curl -X POST "$BASE_APP_URL/github/store-data" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
-  -d "$metadata"
+  -d "$metadata" -v
