@@ -1,4 +1,4 @@
-import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CacheModule } from '@nestjs/cache-manager';
 import { APP_GUARD, APP_FILTER } from '@nestjs/core';
@@ -67,8 +67,15 @@ import { GithubModule } from '~domains/github/github.module';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(JwtMiddleware) 
-      .exclude('/', 'api/v1/auth/signup', 'api/v1/auth/login')
-      .forRoutes('*'); // Apply to all routes except those excluded
+      .apply(JwtMiddleware)
+      .exclude(
+        '/',
+        'api/v1/auth/signup',
+        'api/v1/auth/login',
+        { path: 'api/v1/auth/github-login', method: RequestMethod.POST }
+      )
+      .forRoutes(
+        "*"
+      );
   }
 }
