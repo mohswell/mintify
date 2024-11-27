@@ -77,13 +77,10 @@ export interface PaginationControlsProps {
 
 export interface GitHubUser {
   id: number;
+  githubId?: number;
   login: string;
   name: string;
+  username?: string;
   email: string;
-  avatar_url: string;
+  avatarUrl: string;
 }
-
-export const API_URL = assertValue(
-  process.env.NEXT_PUBLIC_API_BASE_URL,
-  "Missing environment variable: NEXT_PUBLIC_API_BASE_URL",
-);

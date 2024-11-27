@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import { IsEmail, IsOptional, IsNumber, IsString } from 'class-validator';
 
 export class LoginDto {
@@ -13,13 +14,15 @@ export class LoginDto {
 
 export class GitHubLoginDto {
   @IsNumber()
+  @Transform(({ value }) => Number(value))
   githubId: number;
 
   @IsEmail()
   email: string;
 
   @IsString()
-  username: string;
+  @IsOptional()
+  username?: string;
 
   @IsString()
   @IsOptional()

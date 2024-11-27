@@ -11,21 +11,29 @@ export function middleware(request: NextRequest) {
     "/signup",
     "/forgot-password",
     "/password-reset",
-    '/auth/callback/github',
+  ];
 
+  const oauthPaths = [
+    '/auth/callback/github',
+    '/api/auth/github-login'
   ];
 
   const isAuthPage = authPages.includes(pathname);
+  const isOAuthPath = oauthPaths.some(path => pathname.includes(path));
 
   // Get the token from the session storage
   const token = request.cookies.get(SESSION_NAME)?.value;
 
   const handleLogout = () => {
-    const response = NextResponse.redirect(new URL("/login", request.url));
+    const response = NextResponse.redirect(new URL("/", request.url));
     response.cookies.delete(SESSION_NAME);
-
     return response;
   };
+
+  // Special handling for OAuth and auth-related paths
+  if (isOAuthPath) {
+    return NextResponse.next();
+  }
 
   if (token) {
     // Decode the token
@@ -46,10 +54,11 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/home", request.url));
     }
   } else if (!isAuthPage) {
+    // Redirect to login if no token and trying to access protected routes
     return handleLogout();
   }
 
-  // Allow access to auth pages if not logged in, or to protected routes if authenticated
+  // Allow access to all other routes
   return NextResponse.next();
 }
 

@@ -27,7 +27,7 @@ export const githubLogin = async (githubUser: GitHubUser) => {
       email: githubUser.email,
       username: githubUser.login,
       name: githubUser.name,
-      avatarUrl: githubUser.avatar_url
+      avatarUrl: githubUser.avatarUrl,
     }),
   });
 
@@ -119,7 +119,7 @@ export const sendInviteEmail = async (email: string) => {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${bearerToken}`,
       },
-      body: JSON.stringify({ email }), 
+      body: JSON.stringify({ email }),
     });
 
     const result = await response.json();

@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
+if [[ "$COMMIT_HISTORY" == "Unable to fetch commit history." ]]; then
+  echo "Error: Commit history is invalid. Aborting."
+  exit 1
+fi
+
 echo "Sending metadata to server..."
 
 IFS=$'\n'
@@ -85,7 +90,10 @@ metadata=$(jq -n \
   }')
 
 
+echo "Commit JSON: $commit_json"
+echo "Metadata: $metadata"
+
 curl -X POST "$BASE_APP_URL/github/store-data" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
-  -d "$metadata"
+  -d "$metadata" -v
