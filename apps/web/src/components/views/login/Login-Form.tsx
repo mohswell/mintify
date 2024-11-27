@@ -76,7 +76,8 @@ export default function LoginForm() {
     }
   }
 
-  const handleGitHubLogin = async () => {
+  const handleGitHubLogin = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
     setIsLoading(true);
 
     try {
