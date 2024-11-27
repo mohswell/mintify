@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
+if [[ "$COMMIT_HISTORY" == "Unable to fetch commit history." ]]; then
+  echo "Error: Commit history is invalid. Aborting."
+  exit 1
+fi
+
 echo "Sending metadata to server..."
 
 IFS=$'\n'
