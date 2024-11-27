@@ -18,16 +18,24 @@ generate_tests() {
   local file="$1"
   local file_content=$(cat "$file")
   local escaped_content=$(echo "$file_content" | jq -sR .)
+
+  echo "Sending file content for testing: $file" 
+
+  # Format the content as markdown for the test formatter
+  local markdown_content="### File: \`$file\`\n\n\`\`\`typescript\n${file_content}\n\`\`\`"
+  local escaped_markdown=$(echo "$markdown_content" | jq -sR .)
   
   # Send request to test generation service
   local response=$(curl -s -X POST "${BASE_APP_URL}/gemini/generate-tests" \
     -H "Authorization: Bearer ${API_KEY}" \
     -H "Content-Type: application/json" \
-    -d "{\"code\": ${escaped_content}}")
+    -d "{\"code\": ${escaped_markdown}}")
+
+  echo "Received response: $response" # Debug log
   
   # Extract the test code from the response
-  # Assumes the response follows the format from TestFormatterService
-  local test_code=$(echo "$response" | grep -oP '(?<=```typescript\n)[\s\S]*?(?=\n```)')
+  # Assumes the response follows the format from `TestFormatterService`
+  local test_code=$(echo "$response" | grep -oP '(?<=```(?:typescript|js|javascript)?\n)[\s\S]*?(?=\n```)')
   
   # If no test code found, use the entire response
   if [ -z "$test_code" ]; then
@@ -81,11 +89,12 @@ No changes have been applied. Please review the feedback and make necessary adju
     
     # Get changed files
     changed_files=$(git diff --name-only HEAD~1)
+    echo "Found changed files: $changed_files"
     
     for file in $changed_files; do
-      if [[ "$file" =~ \.(js|ts)$ ]]; then
-        echo "Generating tests for $file"
-        test_response=$(generate_tests "$file")
+      # if [[ "$file" =~ \.(js|ts)$ ]]; then
+      echo "Generating tests for $file"
+      test_response=$(generate_tests "$file")
         
         if [ -n "$test_response" ]; then
           test_results="${test_results}
