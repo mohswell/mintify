@@ -28,10 +28,10 @@ model ApiKey {
 model User {
   id          BigInt    @id @default(autoincrement())
   email       String    @unique
-  firstName   String
-  lastName    String
-  username    String    @unique
-  password    String
+  firstName   String?
+  lastName    String?
+  username    String?
+  password    String?
   isPremium Boolean  @default(false) 
   isAdmin   Boolean  @default(false)
   isInactive Boolean @default(false)
