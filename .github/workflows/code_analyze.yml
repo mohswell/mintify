@@ -59,8 +59,9 @@ jobs:
         run: |
           if git rev-parse refs/remotes/origin/${{ github.event.pull_request.base.ref }} >/dev/null 2>&1 && \
              git rev-parse refs/remotes/origin/${{ github.event.pull_request.head.ref }} >/dev/null 2>&1; then
+            # Fetch commit history and escape newlines
             commits=$(git log --pretty=format:'%H|%s|%ae|%an|%ce|%cn|%ad' \
-                     refs/remotes/origin/${{ github.event.pull_request.base.ref }}..refs/remotes/origin/${{ github.event.pull_request.head.ref }})
+                     refs/remotes/origin/${{ github.event.pull_request.base.ref }}..refs/remotes/origin/${{ github.event.pull_request.head.ref }} | tr '\n' ';')
           else
             echo "Unable to fetch commit history." >&2
             exit 1
