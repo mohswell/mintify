@@ -20,7 +20,19 @@ export class GithubController {
         try {
             const user = req.user;
             const userId = user.id;
-            const result = await this.githubService.storePullRequestData(prMetadata, userId);
+
+            // Clean up the data before passing to service
+            const cleanedMetadata = {
+                ...prMetadata,
+                closedAt: prMetadata.closedAt === 'null' ? null : prMetadata.closedAt,
+                mergedAt: prMetadata.mergedAt === 'null' ? null : prMetadata.mergedAt,
+                description: prMetadata.description === 'null' ? null : prMetadata.description,
+                // Remove any trailing semicolons from URLs if present
+                authorAvatar: prMetadata.authorAvatar?.replace(/;$/, ''),
+                prUrl: prMetadata.prUrl?.replace(/;$/, '')
+            };
+
+            const result = await this.githubService.storePullRequestData(cleanedMetadata, userId);
             return {
                 message: 'Pull Request data stored successfully.',
                 data: result,
