@@ -83,38 +83,92 @@ Would you like to generate tests for the changed files?
 No changes have been applied. Please review the feedback and make necessary adjustments."
     ;;
     
-  "/generate-tests")
+    "/generate-tests")
+    # Add debugging logs here at the start of the case
+    echo "=== DEBUG INFORMATION ==="
+    echo "BASE_APP_URL: ${BASE_APP_URL}"
+    echo "API_KEY is set: $([ ! -z "${API_KEY}" ] && echo 'yes' || echo 'no')"
+    echo "Current directory: $(pwd)"
+    echo "Contents of .analysis-data:"
+    ls -la .analysis-data || echo "Directory not found"
+    echo "=== END DEBUG INFO ==="
+    
     echo "Generating tests..."
     test_results=""
     
-    # Get changed files
-    changed_files=$(git diff --name-only HEAD~1)
-    echo "Found changed files: $changed_files"
-    
-    for file in $changed_files; do
-      # if [[ "$file" =~ \.(js|ts)$ ]]; then
-      echo "Generating tests for $file"
-      test_response=$(generate_tests "$file")
+    # Read the analyzed files from the saved list
+    if [ -f ".analysis-data/analyzed_files" ]; then
+        echo "=== ANALYZED FILES CONTENT ==="
+        cat ".analysis-data/analyzed_files"
+        echo "=== END ANALYZED FILES ==="
         
-        if [ -n "$test_response" ]; then
-          test_results="${test_results}
+        while IFS= read -r file; do
+            echo "Processing file: $file"
+            if [[ "$file" =~ \.(ts|js|tsx|jsx)$ ]]; then
+                echo "Generating tests for $file"
+                
+                # Read the file content
+                if [ -f "$file" ]; then
+                    echo "File exists, reading content..."
+                    file_content=$(cat "$file")
+                    
+                    # Format the content as markdown
+                    echo "Formatting content as markdown..."
+                    markdown_content="### File: \`$file\`\n\n\`\`\`typescript\n${file_content}\n\`\`\`"
+                    escaped_markdown=$(echo "$markdown_content" | jq -sR .)
+                    
+                    # Send request to test generation service
+                    echo "Sending request to test generation service..."
+                    echo "Request URL: ${BASE_APP_URL}/gemini/generate-tests"
+                    test_response=$(curl -v -X POST "${BASE_APP_URL}/gemini/generate-tests" \
+                        -H "Authorization: Bearer ${API_KEY}" \
+                        -H "Content-Type: application/json" \
+                        -d "{\"code\": ${escaped_markdown}}" 2>&1)
+                    
+                    echo "Raw API Response:"
+                    echo "$test_response"
+                    
+                    if [ -n "$test_response" ]; then
+                        echo "Received non-empty response"
+                        # Extract the text field from the JSON response
+                        test_code=$(echo "$test_response" | jq -r '.text // .')
+                        
+                        test_results="${test_results}
 ## Tests for \`$file\`
-\`\`\`typescript
-${test_response}
-\`\`\`
+
+${test_code}
+
+---
 "
-        fi
-      fi
-    done
+                    else
+                        echo "Received empty response from API"
+                    fi
+                else
+                    echo "File not found: $file"
+                fi
+            else
+                echo "File $file is not a TypeScript/JavaScript file, skipping"
+            fi
+        done < ".analysis-data/analyzed_files"
+    else
+        echo "No analyzed files found at .analysis-data/analyzed_files"
+    fi
+    
+    echo "=== FINAL TEST RESULTS ==="
+    echo "$test_results"
+    echo "=== END TEST RESULTS ==="
     
     if [ -n "$test_results" ]; then
-      post_comment "### 🧪 Generated Tests
+        echo "Posting comment with test results..."
+        post_comment "### 🧪 Generated Tests
+
 ${test_results}
 
 *Review the generated tests and add them to your test suite if they look good.*"
     else
-      post_comment "### ⚠️ No Tests Generated
-No eligible files found for test generation."
+        echo "No test results generated, posting warning..."
+        post_comment "### ⚠️ No Tests Generated
+No eligible files found for test generation or test generation failed."
     fi
     ;;
     

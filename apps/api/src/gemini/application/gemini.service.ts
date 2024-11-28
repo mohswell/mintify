@@ -15,26 +15,26 @@ export class GeminiService {
     @Inject(GEMINI_PRO_VISION_MODEL) private readonly proVisionModel: GenerativeModel,
     private readonly contentFormatter: ContentFormatterService,
     private readonly testFormatter: TestFormatterService,
-  ) {}
+  ) { }
 
   async generateText(prompt: string): Promise<GenAiResponse> {
-    const contents = createContent(prompt);
+    return this.withRetry(async () => {
+      const contents = createContent(prompt);
+      const { totalTokens } = await this.proModel.countTokens({ contents });
+      this.logger.log(`Tokens: ${JSON.stringify(totalTokens)}`);
 
-    const { totalTokens } = await this.proModel.countTokens({ contents });
-    this.logger.log(`Tokens: ${JSON.stringify(totalTokens)}`);
+      const result = await this.proModel.generateContent({ contents });
+      const response = await result.response;
+      const text = response.text();
 
-    const result = await this.proModel.generateContent({ contents });
-    const response = await result.response;
-    const text = response.text();
-
-    this.logger.log(JSON.stringify(text));
-    return { totalTokens, text };
+      this.logger.log(JSON.stringify(text));
+      return { totalTokens, text };
+    });
   }
 
   async generateTextFromMultiModal(prompt: string, file: Express.Multer.File): Promise<GenAiResponse> {
-    try {
+    return this.withRetry(async () => {
       const contents = createContent(prompt, file);
-
       const { totalTokens } = await this.proVisionModel.countTokens({ contents });
       this.logger.log(`Tokens: ${JSON.stringify(totalTokens)}`);
 
@@ -44,18 +44,12 @@ export class GeminiService {
 
       this.logger.log(JSON.stringify(text));
       return { totalTokens, text };
-    } catch (err) {
-      if (err instanceof Error) {
-        throw new InternalServerErrorException(err.message, err.stack);
-      }
-      throw err;
-    }
+    });
   }
 
   async analyzeImages({ prompt, firstImage, secondImage }: AnalyzeImage): Promise<GenAiResponse> {
-    try {
+    return this.withRetry(async () => {
       const contents = createContent(prompt, firstImage, secondImage);
-
       const { totalTokens } = await this.proVisionModel.countTokens({ contents });
       this.logger.log(`Tokens: ${JSON.stringify(totalTokens)}`);
 
@@ -65,80 +59,72 @@ export class GeminiService {
 
       this.logger.log(JSON.stringify(text));
       return { totalTokens, text };
-    } catch (err) {
-      if (err instanceof Error) {
-        throw new InternalServerErrorException(err.message, err.stack);
-      }
-      throw err;
-    }
+    });
   }
-  async analyzeCode(code: string): Promise<GenAiResponse> {
-    try {
-      // Create formatted content using the formatter service
-      const contents = this.contentFormatter.createContent(code);
 
-      // Count tokens
+  async analyzeCode(code: string): Promise<GenAiResponse> {
+    return this.withRetry(async () => {
+      const contents = this.contentFormatter.createContent(code);
       const { totalTokens } = await this.proModel.countTokens({ contents });
       this.logger.debug(`Token count for analysis: ${totalTokens}`);
 
-      // Generate the analysis
       const result = await this.proModel.generateContent({ contents });
       const response = await result.response;
       const text = response.text();
 
-      // Format the response
       const formattedResponse = this.contentFormatter.formatResponse(text);
-
       this.logger.debug('Analysis completed successfully');
-      
+
       return {
         totalTokens,
         text: formattedResponse,
       };
-    } catch (error) {
-      this.logger.error('Error during code analysis:', error);
-      if (error instanceof Error) {
-        throw new InternalServerErrorException(
-          'Failed to analyze code',
-          error.stack,
-        );
-      }
-      throw error;
-    }
+    });
   }
 
   async generateTests(code: string): Promise<GenAiResponse> {
-    try {
-      // Create formatted content using the test formatter service
+    return this.withRetry(async () => {
       const contents = this.testFormatter.createContent(code);
-  
-      // Count tokens
       const { totalTokens } = await this.proModel.countTokens({ contents });
       this.logger.debug(`Token count for test generation: ${totalTokens}`);
-  
-      // Generate the tests
+
       const result = await this.proModel.generateContent({ contents });
       const response = await result.response;
       const text = response.text();
-  
-      // Format the response
+
       const formattedResponse = this.testFormatter.formatResponse(text);
-  
       this.logger.debug('Test generation completed successfully');
-      
+
       return {
         totalTokens,
         text: formattedResponse,
       };
-    } catch (error) {
-      this.logger.error('Error during test generation:', error);
-      if (error instanceof Error) {
-        throw new InternalServerErrorException(
-          'Failed to generate tests',
-          error.stack,
-        );
+    });
+  }
+
+  private async withRetry<T>(operation: () => Promise<T>, maxRetries = 3): Promise<T> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (attempt === maxRetries) {
+          this.logger.error(`Failed after ${maxRetries} attempts:`, error);
+          throw error;
+        }
+
+        // Check if it's a rate limit or temporary error
+        if (error instanceof Error &&
+          (error.message.includes('temporarily unavailable') ||
+            error.message.includes('rate limit'))) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          this.logger.warn(`Attempt ${attempt} failed, retrying in ${delay}ms`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+
+        throw error;
       }
-      throw error;
     }
+    throw new Error('Max retries reached');
   }
 }

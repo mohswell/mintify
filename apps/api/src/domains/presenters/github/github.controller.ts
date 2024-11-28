@@ -1,4 +1,4 @@
-import { BadRequestException, Body, ClassSerializerInterceptor, Get, HttpException, HttpStatus, NotFoundException, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, ClassSerializerInterceptor, Get, HttpException, HttpStatus, NotFoundException, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { BaseController } from '~decorators/version.decorator';
 import { PullRequestDTO, PullRequestResponseDTO } from '~dto';
 import { GithubService } from '../application/github/github.service';
@@ -20,7 +20,19 @@ export class GithubController {
         try {
             const user = req.user;
             const userId = user.id;
-            const result = await this.githubService.storePullRequestData(prMetadata, userId);
+
+            // Clean up the data before passing to service
+            const cleanedMetadata = {
+                ...prMetadata,
+                closedAt: prMetadata.closedAt === 'null' ? null : prMetadata.closedAt,
+                mergedAt: prMetadata.mergedAt === 'null' ? null : prMetadata.mergedAt,
+                description: prMetadata.description === 'null' ? null : prMetadata.description,
+                // Remove any trailing semicolons from URLs if present
+                authorAvatar: prMetadata.authorAvatar?.replace(/;$/, ''),
+                prUrl: prMetadata.prUrl?.replace(/;$/, '')
+            };
+
+            const result = await this.githubService.storePullRequestData(cleanedMetadata, userId);
             return {
                 message: 'Pull Request data stored successfully.',
                 data: result,
@@ -71,9 +83,13 @@ export class GithubController {
     @Post('store-file-analysis')
     async storeFileAnalysis(@Body() fileAnalysisData: any) {
         try {
-            // Validate input 
-            if (!fileAnalysisData.prNumber) {
-                throw new BadRequestException('PR Number is required');
+            // Validate input for required fields
+            if (!fileAnalysisData.prNumber || !fileAnalysisData.filePath) {
+                throw new BadRequestException('PR Number and File path are required');
+            }
+
+            if (typeof fileAnalysisData.additions !== 'number' || typeof fileAnalysisData.deletions !== 'number') {
+                throw new BadRequestException('Additions and deletions must be numbers');
             }
 
             const result = await this.fileAnalysisService.storeFileAnalysis({
@@ -82,7 +98,7 @@ export class GithubController {
                 additions: fileAnalysisData.additions || 0,
                 deletions: fileAnalysisData.deletions || 0,
                 rawDiff: fileAnalysisData.rawDiff,
-                //fileType: fileAnalysisData.fileType
+                //fileType: fileAnalysisData.fileType  // auto calculated by the file service
             });
 
             return {
@@ -95,6 +111,38 @@ export class GithubController {
                 {
                     status: HttpStatus.INTERNAL_SERVER_ERROR,
                     error: 'Failed to store file analysis.',
+                    details: (error as any).message,
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR,
+            );
+        }
+    }
+
+    @Get('file-analysis/:prNumber')
+    @ApiResponse({
+        status: 200,
+        description: 'List of file analyses for a specific PR'
+    })
+    async getFileAnalyses(@Param('prNumber') prNumber: string) {
+        try {
+            const parsedPrNumber = parseInt(prNumber, 10);
+            if (isNaN(parsedPrNumber)) {
+                throw new BadRequestException('PR number must be a valid number');
+            }
+
+            const analyses = await this.fileAnalysisService.getFileAnalysesByPrNumber(parsedPrNumber);
+            return {
+                message: 'File analyses retrieved successfully',
+                data: analyses
+            };
+        } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+            throw new HttpException(
+                {
+                    status: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: 'Failed to retrieve file analyses.',
                     details: (error as any).message,
                 },
                 HttpStatus.INTERNAL_SERVER_ERROR,

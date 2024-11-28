@@ -8,7 +8,7 @@ export class FileAnalysisService {
 
   constructor(
     private readonly prisma: PrismaService
-  ) {}
+  ) { }
 
   // Method to store file analysis from workflow
   async storeFileAnalysis(
@@ -67,7 +67,17 @@ export class FileAnalysisService {
   async getFileAnalysesByPrNumber(prNumber: number) {
     return this.prisma.fileAnalysis.findMany({
       where: { prNumber },
-      orderBy: { analyzedAt: 'desc' }
+      orderBy: { analyzedAt: 'desc' },
+      include: {
+        pullRequest: {
+          select: {
+            title: true,
+            url: true,
+            author: true,
+            createdAt: true
+          }
+        }
+      }
     });
   }
 }
