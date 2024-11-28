@@ -203,7 +203,7 @@ export default function Dashboard() {
                                         <div className="mt-4 text-sm text-muted-foreground">
                                             <div className="font-medium">Latest commit:</div>
                                             <div className="mt-1 font-mono">
-                                                {pr.commits[0].commitHash.substring(0, 7)} - {pr.commits[0].message}
+                                                {pr.commits?.[0]?.commitHash.substring(0, 7)} - {pr.commits?.[0]?.message}
                                             </div>
                                         </div>
                                     )}
