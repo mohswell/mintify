@@ -1,14 +1,16 @@
-import { Body, ClassSerializerInterceptor, Get, HttpException, HttpStatus, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, ClassSerializerInterceptor, Get, HttpException, HttpStatus, NotFoundException, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { BaseController } from '~decorators/version.decorator';
 import { PullRequestDTO, PullRequestResponseDTO } from '~dto';
 import { GithubService } from '../application/github/github.service';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('github')
 @BaseController('github')
 @UseInterceptors(ClassSerializerInterceptor)
 export class GithubController {
-    constructor(private readonly githubService: GithubService) { }
+    constructor(
+        private readonly githubService: GithubService
+    ) { }
 
     @Post('store-data')
     async storeData(@Req() req: any, @Body() prMetadata: any) {
@@ -36,13 +38,32 @@ export class GithubController {
     }
 
     @Get('pull-requests')
-    @ApiResponse({ 
-        status: 200, 
+    @ApiQuery({
+        name: 'userId',
+        required: false,
+        description: 'Optional user ID to fetch pull requests for a specific user',
+        type: String,
+    })
+    @ApiResponse({
+        status: 200,
         description: 'List of pull requests for the authenticated user',
         type: [PullRequestResponseDTO]
     })
-    async getPullRequests(@Req() req): Promise<PullRequestResponseDTO[]> {
-        const userId = req.user.id;
-        return this.githubService.getPullRequestsForUser(userId);
+    async getPullRequests(
+        @Req() req,
+        @Query('userId') userIdParam?: string,
+    ): Promise<PullRequestResponseDTO[]> {
+        const userId = userIdParam ? BigInt(userIdParam) : req.user.id;
+
+        if (!userId) {
+            throw new BadRequestException('User ID is missing in the request');
+        }
+
+        try {
+            return await this.githubService.getPullRequestsForUser(userId);
+        } catch (error) {
+            throw new NotFoundException('Could not fetch pull requests');
+        }
     }
+
 }
