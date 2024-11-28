@@ -37,8 +37,8 @@ for file in $changed_files; do
         diff_output=$(git diff "${last_analyzed_commit}" "${GITHUB_HEAD_SHA}" -- "$file")
         
         # Calculate additions and deletions
-        additions=$(echo "$diff_output" | grep -c "^+")
-        deletions=$(echo "$diff_output" | grep -c "^-")
+        additions=$(echo "$diff_output" | grep "^+" | grep -v "^+++" | wc -l)
+        deletions=$(echo "$diff_output" | grep "^-" | grep -v "^---" | wc 
         
         if [ -n "$diff_output" ]; then
             # Create a meaningful diff context
