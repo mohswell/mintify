@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '~factories';
+import { FileProvider } from '../application/providers/file.provider';
 
 @Injectable()
 export class FileAnalysisService {
@@ -17,7 +18,11 @@ export class FileAnalysisService {
       additions: number;
       deletions: number;
       rawDiff?: string;
-      fileType?: string;
+      //fileType?: string;
+      aiAnalysisResult?: string;
+      complexityScore?: number;
+      securityIssues?: number;
+      performanceIssues?: number;
     }
   ) {
     try {
@@ -30,31 +35,26 @@ export class FileAnalysisService {
         throw new Error(`Pull Request with number ${analysisData.prNumber} not found`);
       }
 
-      // Perform AI analysis if it's a code file
-      // let aiAnalysis = null;
-      // const codeFileTypes = ['js', 'ts', 'yml', 'yaml', 'md', 'java', 'py', 'tsx', 'css', 'sh', 'json'];
-      // const fileExt = analysisData.filePath.split('.').pop()?.toLowerCase();
-      
-      // if (fileExt && codeFileTypes.includes(fileExt)) {
-      //   try {
-      //     const aiResult = await this.geminiService.analyzeCode(analysisData.rawDiff || '');
-      //     aiAnalysis = aiResult.text;
-      //   } catch (aiError) {
-      //     this.logger.error('AI analysis failed', aiError);
-      //   }
-      // }
+      const fileType = FileProvider.determineFileType(analysisData.filePath);
+      // Optional: Perform additional logic for code files
+      const isCodeFile = FileProvider.isCodeFile(fileType);
+      const fileExt = analysisData.filePath.split('.').pop()?.toLowerCase();
 
       // Create file analysis record
       return await this.prisma.fileAnalysis.create({
         data: {
           prNumber: analysisData.prNumber,
           filePath: analysisData.filePath,
-          fileType: analysisData.fileType || fileExt || 'unknown',
-          additions: analysisData.additions,
-          deletions: analysisData.deletions,
-          rawDiff: analysisData.rawDiff,
-          aiAnalysis: aiAnalysis,
-          pullRequestId: pullRequest.id
+          fileType, // Use the determined file type directly
+          additions: Math.max(analysisData.additions, 0),
+          deletions: Math.max(analysisData.deletions, 0),
+          totalChanges: Math.max(analysisData.additions + analysisData.deletions, 0),
+          rawDiff: analysisData.rawDiff || null,
+          complexityScore: analysisData.complexityScore ?? null,
+          securityIssues: Math.max(analysisData.securityIssues || 0, 0),
+          performanceIssues: Math.max(analysisData.performanceIssues || 0, 0),
+          pullRequestId: pullRequest.id,
+          analyzedAt: new Date()
         }
       });
     } catch (error) {
