@@ -5,25 +5,17 @@ import { Button } from "@/components/views/ui/button";
 import {
     Card,
     CardContent,
-    CardHeader,
-    CardTitle
+    // CardHeader,
+    // CardTitle
 } from "@/components/views/ui/card";
 import { Search } from "lucide-react";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@/components/views/ui/table";
 import { Input } from "@/components/views/ui/input";
 import { Badge } from "@/components/views/ui/badge";
 import { formatDistance } from 'date-fns';
-import axios from 'axios';
-import { API_URL } from '@/lib/env';
-import { useAuthStore } from "@/stores/auth";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/views/ui/select';
+import { fetchPullRequests } from '@/actions';
+import { IconLoader } from "@tabler/icons-react";
+import notification from '@/lib/notification';
 
 interface Commit {
     id: number;
@@ -62,50 +54,85 @@ export default function Dashboard() {
     const [statusFilter, setStatusFilter] = useState("all");
 
     useEffect(() => {
-        async function fetchPullRequests() {
+        async function loadPullRequests() {
+            notification({
+                type: 'info',
+                message: 'Loading pull requests from Github...',
+            });
             try {
-                const token = useAuthStore.getState().token;
-                const response = await axios.get(`${API_URL}/github/pull-requests`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                setPullRequests(response.data);
-                setIsLoading(false);
+                setIsLoading(true);
+                const { data, error } = await fetchPullRequests();
+
+                if (error) {
+                    setError(error);
+                    notification({
+                        type: 'error',
+                        message: error || 'Failed to fetch pull requests'
+                    });
+                } else {
+                    setPullRequests(data);
+                    notification({
+                        type: 'success',
+                        message: `Loaded ${data.length} pull requests`
+                    });
+                }
             } catch (err) {
-                setError('Failed to fetch pull requests');
+                const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+                setError(errorMessage);
+                notification({
+                    type: 'error',
+                    message: errorMessage
+                });
+            } finally {
                 setIsLoading(false);
             }
         }
 
-        fetchPullRequests();
+        loadPullRequests();
     }, []);
 
-    const filteredPRs = pullRequests.filter(pr => {
-        const matchesSearch = pr.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const filteredPRs = pullRequests.filter((pr) => {
+        const matchesSearch =
+            pr.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             pr.authorUsername.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === "all" || pr.status.toLowerCase() === statusFilter.toLowerCase();
+        const matchesStatus =
+            statusFilter === "all" ||
+            pr.status.toLowerCase() === statusFilter.toLowerCase();
         return matchesSearch && matchesStatus;
     });
 
     if (isLoading) {
         return (
-            <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
-                <div>Loading pull requests...</div>
-            </main>
+            <div className="fixed inset-0 bg-white/50 dark:bg-black/50 flex items-center justify-center z-50">
+                <div className="flex flex-col items-center">
+                    <IconLoader className="h-12 w-12 text-black dark:text-white animate-spin" />
+                    <p className="mt-4 text-lg animate-pulse">Loading pull requests...</p>
+                </div>
+            </div>
         );
     }
 
     if (error) {
         return (
             <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
-                <div className="text-red-500">{error}</div>
+                <div className="text-red-500 flex items-center justify-center">
+                    <div className="text-center">
+                        <p className="text-2xl font-bold mb-4">Error Loading Pull Requests</p>
+                        <p>{error}</p>
+                        <Button
+                            className="mt-4"
+                            onClick={() => window.location.reload()}
+                        >
+                            Try Again
+                        </Button>
+                    </div>
+                </div>
             </main>
         );
     }
 
     return (
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 animate-fade-in">
             <div className="flex items-center justify-between">
                 <h1 className="text-lg font-semibold md:text-2xl">Pull Requests</h1>
                 <Button variant="default">New Pull Request</Button>
@@ -113,7 +140,7 @@ export default function Dashboard() {
 
             {pullRequests.length === 0 ? (
                 <div
-                    className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm"
+                    className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm animate-bounce"
                     x-chunk="dashboard-02-chunk-1"
                 >
                     <div className="flex flex-col items-center gap-1 text-center">
@@ -153,7 +180,10 @@ export default function Dashboard() {
 
                     <div className="flex flex-col gap-2">
                         {filteredPRs.map((pr) => (
-                            <Card key={pr.id} className="hover:bg-muted/50 transition-colors">
+                            <Card
+                                key={pr.id}
+                                className="hover:bg-muted/50 transition-colors animate-fade-in-up"
+                            >
                                 <CardContent className="p-6">
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
