@@ -1,6 +1,7 @@
 import { API_URL } from "@/lib/env";
 import { useAuthStore } from "@/stores/auth";
 import { GitHubUser, LoginDetails, SignupDetails, Token } from "@/types";
+import axios from "axios";
 
 export const login = async (details: LoginDetails) => {
   const res = await fetch(`${API_URL}/auth/login`, {
@@ -153,4 +154,30 @@ export const generateAccessToken = async () => {
 
   const data = await res.json();
   return { ok: res.ok, data };
+};
+
+export const fetchPullRequests = async () => {
+  const token = useAuthStore.getState().token;
+  const userId = useAuthStore.getState().user?.id;
+
+  // Optional: Add user ID to the request if available
+  const queryParams = userId ? `?userId=${userId}` : '';
+
+  try {
+      const response = await axios.get(`${API_URL}/github/pull-requests${queryParams}`, {
+          headers: {
+              'Authorization': `Bearer ${token}`
+          }
+      });
+      return { 
+          data: response.data, 
+          error: null 
+      };
+  } catch (err: any) {
+      console.error('Failed to fetch pull requests:', err);
+      return { 
+          data: [], 
+          error: err.response?.data?.message || 'Failed to fetch pull requests' 
+      };
+  }
 };

@@ -10,15 +10,14 @@ export class AuthService {
     private readonly sessionGuard: SessionGuard,
     private readonly jwtGuard: JwtGuard,
     private readonly userProvider: UserProvider,
-  ) { }
+  ) {}
 
   async signup(userDto: UserDto) {
     try {
       const user = await this.userProvider.createUser(userDto);
-      // Convert the user object to a plain object with number IDs
       return {
         ...user,
-        id: Number(user.id)
+        id: typeof user.id === 'bigint' ? Number(user.id) : user.id,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -36,18 +35,17 @@ export class AuthService {
         throw new UnauthorizedException('Invalid credentials');
       }
 
-      const isPasswordValid = await this.userProvider.validatePassword(
-        loginDto.password,
-        user.password
-      );
+      const isPasswordValid = await this.userProvider.validatePassword(loginDto.password, user.password);
 
       if (!isPasswordValid) {
         throw new UnauthorizedException('Invalid credentials');
       }
 
-      // Convert BigInt to string for the JWT payload
+      // Safely convert user.id to string, handling both number and bigint
+      const userIdString = user.id.toString();
+
       const payload = {
-        sub: user.id.toString(), // Convert BigInt to string for JWT
+        sub: userIdString,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
@@ -60,44 +58,37 @@ export class AuthService {
       const token = this.jwtGuard.sign(payload);
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000 * 7);
 
-      // Pass the BigInt directly to createSession
-      await this.sessionGuard.createSession(BigInt(user.id), token, expiresAt);
+      // Ensure user.id is converted to BigInt
+      await this.sessionGuard.createSession(typeof user.id === 'bigint' ? user.id : BigInt(user.id), token, expiresAt);
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password: _, ...userWithoutPassword } = user;
-
-      // Convert BigInt to number in the response
       return {
         user: {
           ...userWithoutPassword,
-          id: Number(user.id)
+          id: typeof user.id === 'bigint' ? Number(user.id) : user.id,
         },
-        token
+        token,
       };
     } catch (error) {
       console.error('Login error:', error);
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
       throw new InternalServerErrorException('An error occurred during login');
     }
   }
 
   async githubLogin(githubLoginDto: GitHubLoginDto) {
     try {
-      // Check if user exists by GitHub ID or email
-      let user = await this.userProvider.findUserByGitHubOrEmail(
-        githubLoginDto.githubId,
-        githubLoginDto.email
-      );
+      let user = await this.userProvider.findUserByGitHubOrEmail(githubLoginDto.githubId, githubLoginDto.email);
 
-      // If user doesn't exist, create a new user
       if (!user) {
-        user = await this.userProvider.createGitHubUser(githubLoginDto) as any;
+        user = (await this.userProvider.createGitHubUser(githubLoginDto)) as any;
       }
 
-      // Create JWT payload
+      // Safely convert user.id to string, handling both number and bigint
+      const userIdString = user.id.toString();
+
       const payload = {
-        sub: user.id.toString(),
+        sub: userIdString,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
@@ -108,19 +99,20 @@ export class AuthService {
       };
 
       const token = this.jwtGuard.sign(payload);
+
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000 * 7);
 
-      // Create session
-      await this.sessionGuard.createSession(BigInt(user.id), token, expiresAt);
+      // Ensure user.id is converted to BigInt
+      await this.sessionGuard.createSession(typeof user.id === 'bigint' ? user.id : BigInt(user.id), token, expiresAt);
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password: _, ...userWithoutPassword } = user;
-
       return {
         user: {
           ...userWithoutPassword,
-          id: Number(user.id)
+          id: typeof user.id === 'bigint' ? Number(user.id) : user.id,
         },
-        token
+        token,
       };
     } catch (error) {
       console.error('GitHub login error:', error);

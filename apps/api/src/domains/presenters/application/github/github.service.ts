@@ -6,7 +6,7 @@ import { PrismaService } from '~factories';
 export class GithubService {
     private readonly logger = new Logger(GithubService.name);
 
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     async storePullRequestData(dto: PullRequestDTO, userId: bigint) {
         this.logger.log('Attempting to store Pull Request data');
@@ -109,25 +109,26 @@ export class GithubService {
     }
 
     async getPullRequestsForUser(userId: bigint): Promise<PullRequestResponseDTO[]> {
-        try {
-            const pullRequests = await this.prisma.pullRequest.findMany({
+        return await this.prisma.execute(async (prisma) => {
+            const pullRequests = await prisma.pullRequest.findMany({
                 where: { userId },
                 include: {
                     commits: {
-                        include: {
-                            stats: true
-                        },
-                        orderBy: {
-                            date: 'desc'
-                        }
-                    }
+                        include: { stats: true },
+                        orderBy: { date: 'desc' },
+                    },
                 },
-                orderBy: {
-                    createdAt: 'desc'
-                }
+                orderBy: { createdAt: 'desc' },
             });
 
-            return pullRequests.map(pr => ({
+            if (!pullRequests || pullRequests.length === 0) {
+                this.logger.warn(`No pull requests found for user ID: ${userId}`);
+                return [];
+            }
+
+            this.logger.debug(`Found ${pullRequests.length} pull requests for user ID: ${userId}`);
+
+            return pullRequests.map((pr) => ({
                 id: pr.id,
                 prNumber: pr.prNumber,
                 title: pr.title,
@@ -143,25 +144,24 @@ export class GithubService {
                 stats: {
                     additions: pr.additions,
                     deletions: pr.deletions,
-                    changedFiles: pr.changedFiles
+                    changedFiles: pr.changedFiles,
                 },
-                commits: pr.commits.map(commit => ({
+                commits: pr.commits.map((commit) => ({
                     id: commit.id,
                     commitHash: commit.commitHash,
                     message: commit.message,
                     authorName: commit.authorName,
                     authorEmail: commit.authorEmail,
                     date: commit.date,
-                    stats: commit.stats ? {
-                        additions: commit.stats.additions,
-                        deletions: commit.stats.deletions,
-                        changedFiles: commit.stats.changedFiles
-                    } : undefined
-                }))
+                    stats: commit.stats
+                        ? {
+                            additions: commit.stats.additions,
+                            deletions: commit.stats.deletions,
+                            changedFiles: commit.stats.changedFiles,
+                        }
+                        : undefined,
+                })),
             }));
-        } catch (error) {
-            this.logger.error(`Error fetching pull requests: ${(error as any).message}`, (error as any).stack);
-            throw new NotFoundException('Could not fetch pull requests');
-        }
+        });
     }
 }

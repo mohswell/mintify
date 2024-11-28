@@ -1,6 +1,6 @@
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ApiExceptionsFilter } from '~utils';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { validateConfig } from './configs/validate.config';
 import { env } from './configs/env.config';
@@ -19,12 +19,19 @@ function setupSwagger(app: NestExpressApplication) {
   SwaggerModule.setup('api', app, document);
 }
 
+// Add BigInt serialization globally
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.enableCors();
   app.useGlobalPipes(validateConfig);
   app.use(express.json({ limit: '1000kb' }));
   app.use(express.urlencoded({ extended: false }));
+  const httpAdapterHost = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new ApiExceptionsFilter(httpAdapterHost));
   app.use(compression());
   setupSwagger(app);
   await app.listen(env.PORT);

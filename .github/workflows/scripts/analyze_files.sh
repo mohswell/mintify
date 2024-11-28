@@ -30,18 +30,34 @@ echo "$changed_files"
 analyzed_files=()
 
 for file in $changed_files; do
-    if [[ "$file" == *.js || "$file" == *.ts || "$file" == *.yml || "$file" == *.md ]]; then
+    if [[ "$file" == *.js || "$file" == *.ts || "$file" == *.yml || "$file" == *.md || "$file" == *.py || "$file" == *.tsx || "$file" == *.java || "$file" == *.css || "$file" == *.sh ]]; then
         echo "Analyzing file: $file"
         
         # Get diff only for this specific file between last analysis and current commit
         diff_output=$(git diff "${last_analyzed_commit}" "${GITHUB_HEAD_SHA}" -- "$file")
+        
+        # Calculate additions and deletions
+        additions=$(echo "$diff_output" | grep -c "^+")
+        deletions=$(echo "$diff_output" | grep -c "^-")
         
         if [ -n "$diff_output" ]; then
             # Create a meaningful diff context
             markdown_diff="### File: \`$file\`\n\n\`\`\`diff\n${diff_output}\n\`\`\`"
             escaped_diff=$(echo "$markdown_diff" | jq -sR .)
             
-            # Send diff to API
+            # Send file analysis to new endpoint
+            file_analysis_result=$(curl -s -X POST "${BASE_APP_URL}/github/store-file-analysis" \
+                -H "Authorization: Bearer ${API_KEY}" \
+                -H "Content-Type: application/json" \
+                -d "{
+                    \"prNumber\": ${PR_NUMBER},
+                    \"filePath\": \"${file}\",
+                    \"additions\": ${additions},
+                    \"deletions\": ${deletions},
+                    \"rawDiff\": ${escaped_diff}
+                }")
+            
+            # Send diff to AI analysis endpoint
             result=$(curl -s -X POST "${BASE_APP_URL}/gemini/analyze-code" \
                 -H "Authorization: Bearer ${API_KEY}" \
                 -H "Content-Type: application/json" \
