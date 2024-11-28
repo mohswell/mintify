@@ -82,7 +82,7 @@ export class GithubController {
                 additions: fileAnalysisData.additions || 0,
                 deletions: fileAnalysisData.deletions || 0,
                 rawDiff: fileAnalysisData.rawDiff,
-                fileType: fileAnalysisData.fileType
+                //fileType: fileAnalysisData.fileType
             });
 
             return {
