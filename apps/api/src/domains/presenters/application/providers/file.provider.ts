@@ -54,7 +54,7 @@ export class FileProvider {
    * @returns Boolean indicating if it's a code file
    */
   static isCodeFile(fileType: FileType): boolean {
-    const codeFileTypes = [
+    const codeFileTypes: FileType[] = [
       FileType.JAVASCRIPT, 
       FileType.TYPESCRIPT, 
       FileType.PYTHON, 
