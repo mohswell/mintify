@@ -191,7 +191,7 @@ export default function Dashboard() {
                                         </div>
                                     </div>
 
-                                    {pr.labels.length > 0 && (
+                                    {pr.labels && pr.labels.length > 0 && (
                                         <div className="mt-2 flex gap-2">
                                             {pr.labels.map((label, index) => (
                                                 <Badge key={index} variant="outline">{label}</Badge>
