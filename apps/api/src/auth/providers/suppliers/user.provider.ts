@@ -5,7 +5,7 @@ import { GitHubLoginDto } from '~dto';
 
 @Injectable()
 export class UserProvider {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
    * Find user by email with included sessions
@@ -16,10 +16,11 @@ export class UserProvider {
         prisma.user.findUnique({
           where: { email },
           include: { sessions: true },
-        })
+        }),
       );
       return user ? { ...user, id: Number(user.id) } : null;
     } catch (error) {
+      console.error('Error finding user by email:', (error as any).message || error);
       throw new InternalServerErrorException('Database query failed');
     }
   }
@@ -71,7 +72,12 @@ export class UserProvider {
    * Validate the provided password against the stored hash
    */
   async validatePassword(inputPassword: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(inputPassword, hashedPassword);
+    try {
+      const isValid = await bcrypt.compare(inputPassword, hashedPassword);
+      return isValid;
+    } catch (error) {
+      console.error('Password validation error:', (error as any).message || error);
+    }
   }
 
   /**
@@ -83,44 +89,44 @@ export class UserProvider {
         where: {
           OR: [{ email }, { username }],
         },
-      })
+      }),
     );
   }
   /**
    * Create an oauth user or find one
    */
   async findUserByGitHubOrEmail(githubId: number, email: string) {
-    return this.prisma.execute(async (prisma) =>
-      prisma.user.findFirst({
-        where: {
-          OR: [
-            { githubId: githubId },
-            { email: email }
-          ]
-        },
-        include: { sessions: true }
-      }).then((user) =>
-        user ? { ...user, id: Number(user.id) } : null
-      )
-    );
+    try {
+      const user = await this.prisma.execute(async (prisma) =>
+        prisma.user.findFirst({
+          where: {
+            OR: [{ githubId }, { email }],
+          },
+          include: { sessions: true },
+        }),
+      );
+      return user ? { ...user, id: Number(user.id) } : null;
+    } catch (error) {
+      console.error('Error finding user by GitHub ID or email:', (error as any).message || error);
+    }
   }
 
   async createGitHubUser(data: GitHubLoginDto) {
     return this.prisma.execute(async (prisma) => {
       const existingUser = await prisma.user.findUnique({
         where: { email: data.email },
-        select: { id: true, githubId: true }
+        select: { id: true, githubId: true },
       });
 
       // If user exists and is not already a GitHub user, throw an error
       if (existingUser && !existingUser.githubId) {
         throw new ConflictException('Email already registered with a different authentication method');
       }
-      
+
       if (existingUser && existingUser.githubId) {
         return {
           ...existingUser,
-          id: Number(existingUser.id)
+          id: Number(existingUser.id),
         };
       }
 
