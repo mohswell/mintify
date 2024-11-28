@@ -4,10 +4,11 @@ import { GithubService } from '~domains/presenters/application/github/github.ser
 import { githubProviders } from '~domains/presenters/application/providers/github.provider';
 import { PrismaService } from '~factories';
 import { FileAnalysisService } from '~domains/presenters/sanctum/analysis.service';
+import { FileProvider } from '~domains/presenters/application/providers/file.provider';
 
 @Module({
     imports: [],
     controllers: [GithubController],
-    providers: [GithubService, ...githubProviders, PrismaService, FileAnalysisService],
+    providers: [GithubService, ...githubProviders, PrismaService, FileAnalysisService, FileProvider],
 })
 export class GithubModule { }  
