@@ -3,13 +3,15 @@ import { BaseController } from '~decorators/version.decorator';
 import { PullRequestDTO, PullRequestResponseDTO } from '~dto';
 import { GithubService } from '../application/github/github.service';
 import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { FileAnalysisService } from '../sanctum/analysis.service';
 
 @ApiTags('github')
 @BaseController('github')
 @UseInterceptors(ClassSerializerInterceptor)
 export class GithubController {
     constructor(
-        private readonly githubService: GithubService
+        private readonly githubService: GithubService,
+        private readonly fileAnalysisService: FileAnalysisService
     ) { }
 
     @Post('store-data')
@@ -63,6 +65,40 @@ export class GithubController {
             return await this.githubService.getPullRequestsForUser(userId);
         } catch (error) {
             throw new NotFoundException('Could not fetch pull requests');
+        }
+    }
+
+    @Post('store-file-analysis')
+    async storeFileAnalysis(@Body() fileAnalysisData: any) {
+        try {
+            // Validate input 
+            if (!fileAnalysisData.prNumber) {
+                throw new BadRequestException('PR Number is required');
+            }
+
+            const result = await this.fileAnalysisService.storeFileAnalysis({
+                prNumber: fileAnalysisData.prNumber,
+                filePath: fileAnalysisData.filePath,
+                additions: fileAnalysisData.additions || 0,
+                deletions: fileAnalysisData.deletions || 0,
+                rawDiff: fileAnalysisData.rawDiff,
+                fileType: fileAnalysisData.fileType
+            });
+
+            return {
+                message: 'File analysis stored successfully.',
+                data: result
+            };
+        } catch (error) {
+            console.error('Error storing file analysis:', error);
+            throw new HttpException(
+                {
+                    status: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: 'Failed to store file analysis.',
+                    details: (error as any).message,
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR,
+            );
         }
     }
 
