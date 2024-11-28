@@ -25,6 +25,14 @@ import { API_URL } from '@/lib/env';
 import { useAuthStore } from "@/stores/auth";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/views/ui/select';
 
+interface Commit {
+    id: number;
+    commitHash: string;
+    message: string;
+    authorName: string;
+    date: string;
+}
+
 interface PullRequest {
     id: number;
     prNumber: number;
@@ -38,13 +46,7 @@ interface PullRequest {
     isDraft: boolean;
     labels: string[];
     createdAt: string;
-    commits: Array<{
-        id: number;
-        commitHash: string;
-        message: string;
-        authorName: string;
-        date: string;
-    }>;
+    commits?: Commit[];
     stats: {
         additions: number;
         deletions: number;
@@ -197,7 +199,7 @@ export default function Dashboard() {
                                         </div>
                                     )}
 
-                                    {pr.commits.length > 0 && (
+                                    {pr.commits && pr.commits.length > 0 && (
                                         <div className="mt-4 text-sm text-muted-foreground">
                                             <div className="font-medium">Latest commit:</div>
                                             <div className="mt-1 font-mono">
