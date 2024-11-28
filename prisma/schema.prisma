@@ -50,18 +50,6 @@ model User {
   avatarUrl  String?
 }
 
-enum ApiKeyStatus {
-  ACTIVE
-  REVOKED
-}
-
-enum UserRole {
-  ADMIN
-  USER
-  MODERATOR
-  GUEST
-}
-
 model Session {
   id          BigInt    @id @default(autoincrement())
   userId      BigInt
@@ -100,6 +88,7 @@ model PullRequest {
   commits          Commit[]
   analyzedFiles    FileAnalysis[]
   userId           BigInt
+  fileAnalysis     BigInt @default(1)
   user             User     @relation(fields: [userId], references: [id])
 }
 
@@ -129,22 +118,68 @@ model CommitStats {
 }
 
 model FileAnalysis {
-  id              BigInt   @id @default(autoincrement())
-  filePath        String
-  diff            String
-  analysisResults String
-  additions       Int      
-  deletions       Int      
-  status          String   
-  previousPath    String?  
-  language        String?
-  analyzedAt      DateTime @default(now())
-  pullRequestId   BigInt
-  pullRequest     PullRequest @relation(fields: [pullRequestId], references: [id])
+  id                BigInt      @id @default(autoincrement())
+  prNumber          Int
+  filePath          String
+  fileType          FileType
+  status            FileStatus  @default(PENDING)
+  additions         Int         @default(0)
+  deletions         Int         @default(0)
+  totalChanges      Int         @default(0)
+  rawDiff           String?     
+  aiAnalysisStatus  AiAnalysisStatus @default(PENDING)
+  aiAnalysisResult  String?
+  complexityScore   Float?
+  securityIssues    Int         @default(0)
+  performanceIssues Int         @default(0)
+  analyzedAt        DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  pullRequestId     BigInt
+  pullRequest       PullRequest @relation(fields: [pullRequestId], references: [id])
+}
+
+// Enums for additional type safety
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  MODERATOR
+  GUEST
 }
 
 enum PRStatus {
   OPEN
   MERGED
   CLOSED
+}
+
+enum FileType {
+  JAVASCRIPT
+  TYPESCRIPT
+  MARKDOWN
+  YAML
+  OTHER
+  CSS
+  BASH
+  PYTHON
+  JAVA
+}
+
+enum FileStatus {
+  PENDING
+  ANALYZED
+  SKIPPED
+  ERROR
+}
+
+enum AiAnalysisStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  PARTIAL
 }
