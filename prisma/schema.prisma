@@ -60,36 +60,35 @@ model Session {
 }
 
 model PullRequest {
-  id                BigInt   @id @default(autoincrement())
-  prNumber          Int      @unique
+  id                BigInt        @id @default(autoincrement())
+  prNumber          Int           @unique
   title             String
   description       String
-  author           String
-  authorUsername    String   
-  authorAvatar     String   
-  url              String
-  baseBranch       String
-  headBranch       String
-  baseRepository   String   
-  headRepository   String   
-  status           PRStatus @default(OPEN)
-  isDraft          Boolean  @default(false)
-  labels           String[] 
-  reviewers        String[] 
-  comments         Int      
-  additions        Int      
-  deletions        Int     
-  changedFiles     Int      
-  mergeable        Boolean?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  closedAt         DateTime? 
-  mergedAt         DateTime? 
-  commits          Commit[]
-  analyzedFiles    FileAnalysis[]
-  userId           BigInt
-  fileAnalysis     BigInt @default(1)
-  user             User     @relation(fields: [userId], references: [id])
+  author            String
+  authorUsername    String
+  authorAvatar      String
+  url               String
+  baseBranch        String
+  headBranch        String
+  baseRepository    String
+  headRepository    String
+  status            PRStatus      @default(OPEN)
+  isDraft           Boolean       @default(false)
+  labels            String[]
+  reviewers         String[]
+  comments          Int
+  additions         Int
+  deletions         Int
+  changedFiles      Int
+  mergeable         Boolean?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  closedAt          DateTime?
+  mergedAt          DateTime?
+  commits           Commit[]
+  analyzedFiles     FileAnalysis[]
+  userId            BigInt
+  user              User          @relation(fields: [userId], references: [id])
 }
 
 model Commit {
@@ -118,25 +117,25 @@ model CommitStats {
 }
 
 model FileAnalysis {
-  id                BigInt      @id @default(autoincrement())
+  id                BigInt          @id @default(autoincrement())
   prNumber          Int
   filePath          String
   fileType          FileType
-  status            FileStatus  @default(PENDING)
-  additions         Int         @default(0)
-  deletions         Int         @default(0)
-  totalChanges      Int         @default(0)
-  rawDiff           String?     
+  status            FileStatus      @default(PENDING)
+  additions         Int             @default(0)
+  deletions         Int             @default(0)
+  totalChanges      Int             @default(0)
+  rawDiff           String?
   aiAnalysisStatus  AiAnalysisStatus @default(PENDING)
   aiAnalysisResult  String?
   complexityScore   Float?
-  securityIssues    Int         @default(0)
-  performanceIssues Int         @default(0)
+  securityIssues    Int             @default(0)
+  performanceIssues Int             @default(0)
   analyzedAt        DateTime?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
   pullRequestId     BigInt
-  pullRequest       PullRequest @relation(fields: [pullRequestId], references: [id])
+  pullRequest       PullRequest     @relation(fields: [pullRequestId], references: [id])
 }
 
 // Enums for additional type safety
