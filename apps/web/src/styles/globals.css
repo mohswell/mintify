@@ -208,9 +208,19 @@ textarea:focus {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
+.diff-file {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
 .diff-wrapper pre {
   margin: 0;
   padding: 0.5rem;
+}
+
+.diff-gutter {
+  padding: 0 8px;
+  user-select: none;
+  text-align: right;
 }
 
 .diff-line {
@@ -232,6 +242,14 @@ textarea:focus {
   white-space: pre;
 }
 
+.diff-code-add {
+  background-color: #e6ffec;
+}
+
+.diff-code-del {
+  background-color: #ffebe9;
+}
+
 .diff-add {
   background-color: #e6ffec;
 }
@@ -246,4 +264,27 @@ textarea:focus {
 
 .diff-del .diff-gutter {
   background-color: #ffd7d5;
+}
+
+.diff-gutter-add {
+  background-color: #e6ffec;
+  color: #24292f;
+}
+
+.diff-gutter-del {
+  background-color: #ffebe9;
+  color: #24292f;
+}
+
+.diff-decoration {
+  width: 1px;
+  margin-right: 10px;
+}
+
+.diff-decoration-add {
+  background-color: #2cbe4e;
+}
+
+.diff-decoration-del {
+  background-color: #ff4444;
 }
