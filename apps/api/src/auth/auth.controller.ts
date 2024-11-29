@@ -1,7 +1,8 @@
-import { Body, Post, HttpException, HttpStatus, } from '@nestjs/common';
+import { Body, Post, HttpException, HttpStatus, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserDto, LoginDto, GitHubLoginDto } from '~/dto';
 import { BaseController } from '~decorators/version.decorator';
+import { UserRole } from '~types';
 // import { SkipThrottle, Throttle } from '@nestjs/throttler';
 
 @BaseController('auth')
@@ -14,7 +15,15 @@ export class AuthController {
     @Post('signup')
     async signup(@Body() userDto: UserDto) {
         try {
-            const user = await this.authService.signup(userDto);
+            // Add default values if not provided
+            const enrichedUserDto = {
+                isPremium: false,
+                isAdmin: false,
+                role: UserRole.User,
+                ...userDto
+            };
+
+            const user = await this.authService.signup(enrichedUserDto);
             return { message: 'User created successfully', user };
         } catch (error) {
             throw new HttpException((error as Error).message, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -27,7 +36,20 @@ export class AuthController {
             const result = await this.authService.login(loginDto);
             return { message: 'Login successful', ...result };
         } catch (error) {
-            throw new HttpException((error as Error).message, HttpStatus.UNAUTHORIZED);
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
+            if (error instanceof Error && Array.isArray((error as any).response?.message)) {
+                throw new BadRequestException({
+                    message: (error as any).response.message,
+                    error: 'Validation failed'
+                });
+            }
+            throw new HttpException(
+                (error as Error).message || 'An error occurred during signup',
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 
