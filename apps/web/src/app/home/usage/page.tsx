@@ -65,8 +65,10 @@ interface DiffChange {
 
 const parseGitDiff = (rawDiff: string) => {
     const lines = rawDiff.split('\n');
-    const fileNameMatch = lines.length > 0 ? lines[0].match(/^### File: (.+)/) : null;
-    const fileName = fileNameMatch ? fileNameMatch[1] : '';
+    const fileNameMatch = lines.length > 0 ? lines[0]?.match(/^### File: (.+)/) : null;
+
+    // Use optional chaining to safely access the matched group
+    const fileName = fileNameMatch?.[1] || ''; // This will default to an empty string if fileNameMatch is undefined
 
     // Remove the custom header to get pure git diff
     const pureDiff = lines.slice(2).join('\n');
@@ -100,7 +102,7 @@ export default function FileAnalysisPage() {
 
     const parseDiffHeader = (rawDiff: string) => {
         const lines = rawDiff.split('\n');
-        const fileNameMatch = lines[0].match(/^### File: (.+)/);
+        const fileNameMatch = lines[0]?.match(/^### File: (.+)/);
         const fileName = fileNameMatch ? fileNameMatch[1] : '';
         return { fileName };
     };
