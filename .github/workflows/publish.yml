@@ -21,7 +21,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Install dependencies
         run: npm install
@@ -54,9 +54,15 @@ jobs:
           minor=$(echo "$latest_version" | cut -d. -f2)
           patch=$(echo "$latest_version" | cut -d. -f3)
 
-          # Increment minor version (you can customize this logic)
-          new_minor=$((minor + 1))
-          new_version="${major}.${new_minor}.0"
+          # Increment patch version
+          if [ "$patch" -lt 9 ]; then
+            new_patch=$((patch + 1))
+            new_version="${major}.${minor}.${new_patch}"
+          else
+            # Increment minor version and reset patch
+            new_minor=$((minor + 1))
+            new_version="${major}.${new_minor}.0"
+          fi
 
           # Set the new version in the environment
           echo "new_version=$new_version" >> $GITHUB_ENV
@@ -66,6 +72,14 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
+
+          # Check if tag already exists
+          if git rev-parse "v${{ env.new_version }}" >/dev/null 2>&1; then
+            echo "Tag v${{ env.new_version }} already exists. Exiting."
+            exit 1
+          fi
+
+          # Create and push the new tag
           git tag -a "v${{ env.new_version }}" -m "Release v${{ env.new_version }}"
           git push origin "v${{ env.new_version }}"
         env:
@@ -95,7 +109,7 @@ jobs:
       # - name: Upload Release Asset
       #   uses: actions/upload-release-asset@v1
       #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       #   with:
       #     upload_url: ${{ steps.create_release.outputs.upload_url }}
       #     asset_path: ./artifact.tar.gz
