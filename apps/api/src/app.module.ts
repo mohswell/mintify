@@ -13,6 +13,8 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from '~factories';
 import { ApiModule } from '~factories/api/api.module';
 import { GithubModule } from '~domains/github/github.module';
+import { HealthController } from '~log/health/health.controller';
+import { RequestLoggerMiddleware } from '~middleware/extensions/logger.middleware';
 
 @Module({
   imports: [
@@ -44,13 +46,13 @@ import { GithubModule } from '~domains/github/github.module';
     //     limit: 50,      // Limit to 50 requests
     //   }
     // ]),
-    GeminiModule, 
+    GeminiModule,
     AuthModule,
     PrismaModule,
     ApiModule,
     GithubModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [
     AppService,
     {
@@ -66,6 +68,11 @@ import { GithubModule } from '~domains/github/github.module';
 
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    // Apply request logger middleware to all routes
+    consumer
+      .apply(RequestLoggerMiddleware)
+      .forRoutes('*');
+      
     consumer
       .apply(JwtMiddleware)
       .exclude(
