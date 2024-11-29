@@ -11,6 +11,7 @@ export class GithubService {
     async storePullRequestData(dto: PullRequestDTO, userId: bigint) {
         this.logger.log('Attempting to store Pull Request data');
         this.logger.log(JSON.stringify(dto, null, 2));
+
         const prNumber = Number(dto.prNumber);
         if (isNaN(prNumber)) {
             throw new Error('Pull Request number must be a number');
@@ -26,7 +27,7 @@ export class GithubService {
 
             const pullRequest = await this.prisma.pullRequest.create({
                 data: {
-                    prNumber: prNumber,
+                    prNumber,
                     title: prData.prTitle,
                     description: prData.description || '',
                     author: prData.prAuthor,
@@ -49,7 +50,7 @@ export class GithubService {
                     updatedAt: prData.updatedAt ? new Date(prData.updatedAt) : undefined,
                     closedAt: prData.closedAt ? new Date(prData.closedAt) : undefined,
                     mergedAt: prData.mergedAt ? new Date(prData.mergedAt) : undefined,
-                    userId: userId,
+                    userId,
                 },
             });
 
@@ -59,9 +60,13 @@ export class GithubService {
                 this.logger.log(`Processing ${commits.length} commits`);
                 const commitPromises = commits.map(async (commit: CommitDTO) => {
                     try {
-                        // Validate commit data
-                        if (!commit.sha) {
-                            this.logger.warn(`Skipping commit with no SHA: ${JSON.stringify(commit)}`);
+                        // Validate the commit date
+                        const validDate = commit.date && !isNaN(new Date(commit.date).getTime())
+                            ? new Date(commit.date)
+                            : null;
+
+                        if (!validDate || !commit.sha) {
+                            this.logger.warn(`Skipping commit with invalid date or no SHA: ${JSON.stringify(commit)}`);
                             return null;
                         }
 
@@ -74,7 +79,7 @@ export class GithubService {
                                 authorUsername: commit.authorUsername || '',
                                 committerEmail: commit.committerEmail || '',
                                 committerName: commit.committerName || '',
-                                date: new Date(commit.date),
+                                date: validDate,
                                 pullRequestId: pullRequest.id,
                             },
                         });
@@ -102,11 +107,11 @@ export class GithubService {
 
             return pullRequest;
         } catch (error) {
-            this.logger.warn('No commits found for the pull request');
             this.logger.error(`Error storing Pull Request data: ${(error as any).message}`, (error as any).stack);
             throw error;
         }
     }
+
 
     async getPullRequestsForUser(userId: bigint): Promise<PullRequestResponseDTO[]> {
         return await this.prisma.execute(async (prisma) => {
