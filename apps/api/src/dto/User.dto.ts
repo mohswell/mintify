@@ -17,21 +17,31 @@ export class UserDto {
   
     @IsString()
     @IsNotEmpty()
-    @MinLength(4)
+    @MinLength(4, { message: 'Username must be at least 4 characters long' })
     username: string;
   
     @IsString()
     @IsNotEmpty()
-    @MinLength(6)
+    @MinLength(6, { message: 'Password must be at least 6 characters long' })
     password: string;
 
     @IsBoolean()
-    @Transform(({ value }) => value === 'true' || value === true)
-    isPremium: boolean;
+    @IsOptional()
+    @Transform(({ value }) => {
+      if (value === 'true') return true;
+      if (value === 'false') return false;
+      return value;
+    })
+    isPremium?: boolean = false;
 
     @IsBoolean()
-    @Transform(({ value }) => value === 'true' || value === true)
-    isAdmin: boolean;
+    @IsOptional()
+    @Transform(({ value }) => {
+      if (value === 'true') return true;
+      if (value === 'false') return false;
+      return value;
+    })
+    isAdmin?: boolean = false;
 
     @IsBoolean()
     @IsOptional()
@@ -46,8 +56,9 @@ export class UserDto {
     @IsOptional() 
     aiUserToken?: string;
 
-    @IsEnum(UserRole)
-    role: UserRole;
+    @IsEnum(UserRole, { message: 'Role must be one of: admin, user, moderator, guest' })
+    @IsOptional()
+    role?: UserRole = UserRole.User;
 
     @IsInt()
     @Min(1) 
