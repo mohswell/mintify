@@ -15,6 +15,7 @@ import { ApiModule } from '~factories/api/api.module';
 import { GithubModule } from '~domains/github/github.module';
 import { HealthController } from '~log/health/health.controller';
 import { RequestLoggerMiddleware } from '~middleware/extensions/logger.middleware';
+import { TerminusModule } from '@nestjs/terminus';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { RequestLoggerMiddleware } from '~middleware/extensions/logger.middlewar
     //     limit: 50,      // Limit to 50 requests
     //   }
     // ]),
+    TerminusModule,
     GeminiModule,
     AuthModule,
     PrismaModule,
