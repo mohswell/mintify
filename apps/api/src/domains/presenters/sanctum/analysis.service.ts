@@ -6,29 +6,25 @@ import { FileProvider } from '../application/providers/file.provider';
 export class FileAnalysisService {
   private readonly logger = new Logger(FileAnalysisService.name);
 
-  constructor(
-    private readonly prisma: PrismaService
-  ) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   // Method to store file analysis from workflow
-  async storeFileAnalysis(
-    analysisData: {
-      prNumber: number;
-      filePath: string;
-      additions: number;
-      deletions: number;
-      rawDiff?: string;
-      //fileType?: string;
-      aiAnalysisResult?: string;
-      complexityScore?: number;
-      securityIssues?: number;
-      performanceIssues?: number;
-    }
-  ) {
+  async storeFileAnalysis(analysisData: {
+    prNumber: number;
+    filePath: string;
+    additions: number;
+    deletions: number;
+    rawDiff?: string;
+    //fileType?: string;
+    aiAnalysisResult?: string;
+    complexityScore?: number;
+    securityIssues?: number;
+    performanceIssues?: number;
+  }) {
     try {
       // Find the associated pull request
       const pullRequest = await this.prisma.pullRequest.findUnique({
-        where: { prNumber: analysisData.prNumber }
+        where: { prNumber: analysisData.prNumber },
       });
 
       if (!pullRequest) {
@@ -37,8 +33,8 @@ export class FileAnalysisService {
 
       const fileType = FileProvider.determineFileType(analysisData.filePath);
       // Optional: Perform additional logic for code files
-      const isCodeFile = FileProvider.isCodeFile(fileType);
-      const fileExt = analysisData.filePath.split('.').pop()?.toLowerCase();
+      // const isCodeFile = FileProvider.isCodeFile(fileType);
+      // const fileExt = analysisData.filePath.split('.').pop()?.toLowerCase();
 
       // Create file analysis record
       return await this.prisma.fileAnalysis.create({
@@ -54,8 +50,8 @@ export class FileAnalysisService {
           securityIssues: Math.max(analysisData.securityIssues || 0, 0),
           performanceIssues: Math.max(analysisData.performanceIssues || 0, 0),
           pullRequestId: pullRequest.id,
-          analyzedAt: new Date()
-        }
+          analyzedAt: new Date(),
+        },
       });
     } catch (error) {
       this.logger.error('Error storing file analysis', error);
@@ -74,43 +70,41 @@ export class FileAnalysisService {
             title: true,
             url: true,
             author: true,
-            createdAt: true
-          }
-        }
-      }
+            createdAt: true,
+          },
+        },
+      },
     });
   }
 
   // Method to retrieve file analysis for all PR's for the user
-
-  async getAllFileAnalyses(userId: bigint) {
-    try {
-      return await this.prisma.fileAnalysis.findMany({
+  async getFileAnalysisByUserId(userId: bigint) {
+    return this.prisma.execute(async (prisma) => {
+      return prisma.fileAnalysis.findMany({
         where: {
           pullRequest: {
-            userId: userId
-          }
+            userId: userId,
+          },
         },
-        orderBy: [
-          { analyzedAt: 'desc' },
-          { createdAt: 'desc' }
-        ],
-        include: {
-          pullRequest: {
-            select: {
-              title: true,
-              prNumber: true,
-              url: true,
-              author: true,
-              createdAt: true,
-              status: true
-            }
-          }
-        }
+        select: {
+          id: true,
+          filePath: true,
+          fileType: true,
+          status: true,
+          rawDiff: true,
+          additions: true,
+          deletions: true,
+          totalChanges: true,
+          aiAnalysisStatus: true,
+          aiAnalysisResult: true,
+          complexityScore: true,
+          securityIssues: true,
+          performanceIssues: true,
+          analyzedAt: true,
+        },
+        orderBy: [{ analyzedAt: 'desc' }, { createdAt: 'desc' }],
+        take: 100, // Limit to most recent 100 file analyses
       });
-    } catch (error) {
-      this.logger.error(`Error fetching file analyses for user ${userId}:`, error);
-      throw new Error('Failed to fetch file analyses');
-    }
+    });
   }
 }
