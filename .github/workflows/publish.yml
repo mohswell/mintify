@@ -45,41 +45,40 @@ jobs:
       - name: Calculate Release Version
         id: version
         run: |
-          # Get the latest tag or fallback to "v0.0.0"
-          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          # Fetch all tags first
+          git fetch --tags
+          
+          # Get latest tag, defaulting to v0.0.0 if none exists
+          latest_tag=$(git tag -l "v*" | sort -V | tail -n1 || echo "v0.0.0")
+          echo "Latest tag found: $latest_tag"
+          
           latest_version=${latest_tag#v}
-
-          # Parse major, minor, patch
           major=$(echo "$latest_version" | cut -d. -f1)
           minor=$(echo "$latest_version" | cut -d. -f2)
           patch=$(echo "$latest_version" | cut -d. -f3)
-
-          # Increment patch version
-          if [ "$patch" -lt 9 ]; then
-            new_patch=$((patch + 1))
-            new_version="${major}.${minor}.${new_patch}"
-          else
-            # Increment minor version and reset patch
-            new_minor=$((minor + 1))
-            new_version="${major}.${new_minor}.0"
+          
+          # Simple increment: if v0.0.1 exists, go to v0.0.2
+          new_patch=$((patch + 1))
+          new_version="${major}.${minor}.${new_patch}"
+          
+          echo "Calculated new version: v${new_version}"
+          
+          # Verify this version doesn't exist
+          if git rev-parse "v${new_version}" >/dev/null 2>&1; then
+            echo "Error: Calculated version v${new_version} already exists!"
+            exit 1
           fi
-
-          # Set the new version in the environment
+          
+          # Set the new version
           echo "new_version=$new_version" >> $GITHUB_ENV
-          echo "New version: $new_version"
+          echo "::set-output name=new_version::$new_version"
 
       - name: Push New Tag
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-
-          # Check if tag already exists
-          if git rev-parse "v${{ env.new_version }}" >/dev/null 2>&1; then
-            echo "Tag v${{ env.new_version }} already exists. Exiting."
-            exit 1
-          fi
-
-          # Create and push the new tag
+          
+          echo "Creating new tag: v${{ env.new_version }}"
           git tag -a "v${{ env.new_version }}" -m "Release v${{ env.new_version }}"
           git push origin "v${{ env.new_version }}"
         env:

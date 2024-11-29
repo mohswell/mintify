@@ -1,11 +1,12 @@
 import { BadRequestException, ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '~/factories';
 import * as bcrypt from 'bcrypt';
-import { GitHubLoginDto } from '~dto';
+import { GitHubLoginDto, UserDto } from '~dto';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class UserProvider {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /**
    * Find user by email with included sessions
@@ -28,44 +29,52 @@ export class UserProvider {
   /**
    * Create a new user with proper validation and hashed password
    */
-  async createUser(data: any) {
-    if (!data.email || !data.password) {
-      throw new BadRequestException('Email and password are required');
-    }
+  async createUser(data: UserDto) {
+    try {
+      if (!data.email || !data.password) {
+        throw new BadRequestException('Email and password are required');
+      }
 
-    const existingUser = await this.checkUserExists(data.email, data.username);
-    if (existingUser) {
-      throw new BadRequestException('User with this email or username already exists');
-    }
+      const existingUser = await this.checkUserExists(data.email, data.username);
+      if (existingUser) {
+        throw new BadRequestException('User with this email or username already exists');
+      }
 
-    const hashedPassword = await bcrypt.hash(data.password, 12);
+      const hashedPassword = await bcrypt.hash(data.password, 12);
 
-    return this.prisma.execute(async (prisma) => {
-      const user = await prisma.user.create({
-        data: {
-          email: data.email,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          username: data.username,
-          password: hashedPassword,
-          isPremium: data.isPremium ?? false,
-          isAdmin: data.isAdmin ?? false,
-          role: data.role?.toUpperCase() ?? 'USER',
-          isInactive: data.isInactive ?? false,
-          registrationDate: new Date(),
-        },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          username: true,
-          role: true,
-          isPremium: true,
-        },
+      return this.prisma.execute(async (prisma) => {
+        const user = await prisma.user.create({
+          data: {
+            email: data.email,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            username: data.username,
+            password: hashedPassword,
+            isPremium: data.isPremium ?? false,
+            isAdmin: data.isAdmin ?? false,
+            role: (data.role ?? 'USER').toUpperCase() as UserRole,
+            isInactive: false,
+            registrationDate: new Date(),
+          },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            username: true,
+            role: true,
+            isPremium: true,
+          },
+        });
+        return { ...user, id: Number(user.id) };
       });
-      return { ...user, id: Number(user.id) }; // Convert BigInt to Number
-    });
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      console.error('Error creating user:', error);
+      throw new InternalServerErrorException('Failed to create user');
+    }
   }
 
   /**
