@@ -81,36 +81,37 @@ export class FileAnalysisService {
     });
   }
 
-  // Method to retrieve file analysis for all PR's for the user
-
-  async getAllFileAnalyses(userId: bigint) {
-    try {
-      return await this.prisma.fileAnalysis.findMany({
-        where: {
-          pullRequest: {
-            userId: userId
-          }
-        },
-        orderBy: [
-          { analyzedAt: 'desc' },
-          { createdAt: 'desc' }
-        ],
-        include: {
-          pullRequest: {
-            select: {
-              title: true,
-              prNumber: true,
-              url: true,
-              author: true,
-              createdAt: true,
-              status: true
-            }
-          }
+// Method to retrieve file analysis for all PR's for the user
+async getFileAnalysisByUserId(userId: bigint) {
+  return this.prisma.execute(async (prisma) => {
+    return prisma.fileAnalysis.findMany({
+      where: {
+        pullRequest: {
+          userId: userId
         }
-      });
-    } catch (error) {
-      this.logger.error(`Error fetching file analyses for user ${userId}:`, error);
-      throw new Error('Failed to fetch file analyses');
-    }
-  }
+      },
+      select: {
+        id: true,
+        filePath: true,
+        fileType: true,
+        status: true,
+        rawDiff: true,
+        additions: true,
+        deletions: true,
+        totalChanges: true,
+        aiAnalysisStatus: true,
+        aiAnalysisResult: true,
+        complexityScore: true,
+        securityIssues: true,
+        performanceIssues: true,
+        analyzedAt: true
+      },
+      orderBy: [
+        { analyzedAt: 'desc' },
+        { createdAt: 'desc' }
+      ],
+      take: 100 // Limit to most recent 100 file analyses
+    });
+  });
+}
 }
