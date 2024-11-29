@@ -65,7 +65,7 @@ interface DiffChange {
 
 const parseGitDiff = (rawDiff: string) => {
     const lines = rawDiff.split('\n');
-    const fileNameMatch = lines[0].match(/^### File: (.+)/);
+    const fileNameMatch = lines.length > 0 ? lines[0].match(/^### File: (.+)/) : null;
     const fileName = fileNameMatch ? fileNameMatch[1] : '';
 
     // Remove the custom header to get pure git diff
