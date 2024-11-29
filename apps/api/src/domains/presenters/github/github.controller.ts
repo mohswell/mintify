@@ -130,10 +130,10 @@ export class GithubController {
                 throw new BadRequestException('User ID is missing in the request');
             }
 
-            const analyses = await this.fileAnalysisService.getAllFileAnalyses(userId);
+            const analysis = await this.fileAnalysisService.getFileAnalysisByUserId(userId);
             return {
                 message: 'File analysis retrieved successfully',
-                data: analyses
+                data: analysis
             };
         } catch (error) {
             if (error instanceof BadRequestException) {
