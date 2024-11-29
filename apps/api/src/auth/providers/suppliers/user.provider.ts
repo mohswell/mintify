@@ -29,53 +29,42 @@ export class UserProvider {
   /**
    * Create a new user with proper validation and hashed password
    */
-  async createUser(data: UserDto) {
-    try {
-      if (!data.email || !data.password) {
-        throw new BadRequestException('Email and password are required');
-      }
-
-      const existingUser = await this.checkUserExists(data.email, data.username);
-      if (existingUser) {
-        throw new BadRequestException('User with this email or username already exists');
-      }
-
-      const hashedPassword = await bcrypt.hash(data.password, 12);
-
-      return this.prisma.execute(async (prisma) => {
-        const user = await prisma.user.create({
-          data: {
-            email: data.email,
-            firstName: data.firstName,
-            lastName: data.lastName,
-            username: data.username,
-            password: hashedPassword,
-            isPremium: data.isPremium ?? false,
-            isAdmin: data.isAdmin ?? false,
-            role: (data.role ?? 'USER').toUpperCase() as UserRole,
-            isInactive: false,
-            registrationDate: new Date(),
-          },
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            username: true,
-            role: true,
-            isPremium: true,
-          },
-        });
-        return { ...user, id: Number(user.id) };
-      });
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      console.error('Error creating user:', error);
-      throw new InternalServerErrorException('Failed to create user');
+  async createUser(data: any) {
+    if (!data.email || !data.password) {
+      throw new BadRequestException('Email and password are required');
     }
+  
+    const existingUser = await this.checkUserExists(data.email, data.username);
+    if (existingUser) {
+      throw new ConflictException('User with this email or username already exists');
+    }
+  
+    const hashedPassword = await bcrypt.hash(data.password, 12);
+    return this.prisma.execute(async (prisma) =>
+      prisma.user.create({
+        data: {
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          username: data.username,
+          password: hashedPassword,
+          isPremium: data.isPremium ?? false,
+          isAdmin: data.isAdmin ?? false,
+          role: data.role ?? UserRole.USER,
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          username: true,
+          role: true,
+          isPremium: true,
+        },
+      }),
+    );
   }
+  
 
   /**
    * Validate the provided password against the stored hash
