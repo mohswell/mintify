@@ -202,3 +202,48 @@ textarea:focus {
 .no-tailwind {
   all: unset;
 }
+
+/* Diff Styling */
+.diff-wrapper {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.diff-wrapper pre {
+  margin: 0;
+  padding: 0.5rem;
+}
+
+.diff-line {
+  display: flex;
+  padding: 0 0.5rem;
+}
+
+.diff-gutter {
+  padding: 0 0.5rem;
+  min-width: 3rem;
+  text-align: right;
+  color: #6e7681;
+  background-color: #f6f8fa;
+  border-right: 1px solid #d0d7de;
+}
+
+.diff-code {
+  padding: 0 0.5rem;
+  white-space: pre;
+}
+
+.diff-add {
+  background-color: #e6ffec;
+}
+
+.diff-del {
+  background-color: #ffebe9;
+}
+
+.diff-add .diff-gutter {
+  background-color: #ccffd8;
+}
+
+.diff-del .diff-gutter {
+  background-color: #ffd7d5;
+}

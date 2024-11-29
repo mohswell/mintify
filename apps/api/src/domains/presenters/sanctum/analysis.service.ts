@@ -80,4 +80,37 @@ export class FileAnalysisService {
       }
     });
   }
+
+  // Method to retrieve file analysis for all PR's for the user
+
+  async getAllFileAnalyses(userId: bigint) {
+    try {
+      return await this.prisma.fileAnalysis.findMany({
+        where: {
+          pullRequest: {
+            userId: userId
+          }
+        },
+        orderBy: [
+          { analyzedAt: 'desc' },
+          { createdAt: 'desc' }
+        ],
+        include: {
+          pullRequest: {
+            select: {
+              title: true,
+              prNumber: true,
+              url: true,
+              author: true,
+              createdAt: true,
+              status: true
+            }
+          }
+        }
+      });
+    } catch (error) {
+      this.logger.error(`Error fetching file analyses for user ${userId}:`, error);
+      throw new Error('Failed to fetch file analyses');
+    }
+  }
 }

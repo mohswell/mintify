@@ -164,20 +164,64 @@ export const fetchPullRequests = async () => {
   const queryParams = userId ? `?userId=${userId}` : '';
 
   try {
-      const response = await axios.get(`${API_URL}/github/pull-requests${queryParams}`, {
-          headers: {
-              'Authorization': `Bearer ${token}`
-          }
-      });
-      return { 
-          data: response.data, 
-          error: null 
-      };
+    const response = await axios.get(`${API_URL}/github/pull-requests${queryParams}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return {
+      data: response.data,
+      error: null
+    };
   } catch (err: any) {
-      console.error('Failed to fetch pull requests:', err);
-      return { 
-          data: [], 
-          error: err.response?.data?.message || 'Failed to fetch pull requests' 
-      };
+    console.error('Failed to fetch pull requests:', err);
+    return {
+      data: [],
+      error: err.response?.data?.message || 'Failed to fetch pull requests'
+    };
+  }
+};
+
+export const fetchPRFileAnalysis = async (prNumber: number) => {
+  const token = useAuthStore.getState().token;
+
+  try {
+    const response = await axios.get(`${API_URL}/github/file-analysis/${prNumber}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return {
+      data: response.data.data,
+      error: null
+    };
+  } catch (err: any) {
+    console.error('Failed to fetch file analysis:', err);
+    return {
+      data: [],
+      error: err.response?.data?.message || 'Failed to fetch file analysis'
+    };
+  }
+};
+
+export const fetchAllPRFileAnalysis = async () => {
+  const token = useAuthStore.getState().token;
+
+  try {
+    const response = await axios.get(`${API_URL}/github/file-analysis`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return { 
+      data: response.data.data, 
+      error: null 
+    };
+  } catch (err: any) {
+    console.error('Failed to fetch file analyses:', err);
+    return { 
+      data: [], 
+      error: err.response?.data?.message || 'Failed to fetch file analyses' 
+    };
   }
 };
