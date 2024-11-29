@@ -26,6 +26,7 @@ import Cookies from "js-cookie";
 import { SESSION_NAME } from "@/lib/constants";
 import { supabase } from "@/auth/config/supabase";
 import { GitHubUser } from "@/types";
+import { AUTH_REDIRECT_URL } from "@/lib/env";
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -85,7 +86,7 @@ export default function LoginForm() {
         provider: "github",
         options: {
           scopes: "user:email",
-          redirectTo: `${window.location.origin}/auth/callback/github`
+          redirectTo: `${AUTH_REDIRECT_URL}/auth/callback/github`
         }
       });
 
