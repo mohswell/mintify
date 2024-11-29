@@ -1,4 +1,4 @@
-import { Body, Post, HttpException, HttpStatus, BadRequestException } from '@nestjs/common';
+import { Body, Post, HttpException, HttpStatus, BadRequestException, ConflictException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserDto, LoginDto, GitHubLoginDto } from '~/dto';
 import { BaseController } from '~decorators/version.decorator';
@@ -14,21 +14,24 @@ export class AuthController {
     // @Throttle('short') // Applies the short throttler I defined in app.module.ts
     @Post('signup')
     async signup(@Body() userDto: UserDto) {
+        console.log('Received DTO:', userDto); // Debugging
         try {
-            // Add default values if not provided
             const enrichedUserDto = {
                 isPremium: false,
                 isAdmin: false,
                 role: UserRole.User,
-                ...userDto
+                ...userDto,
             };
-
             const user = await this.authService.signup(enrichedUserDto);
             return { message: 'User created successfully', user };
         } catch (error) {
-            throw new HttpException((error as Error).message, HttpStatus.INTERNAL_SERVER_ERROR);
+            if (error instanceof BadRequestException || error instanceof ConflictException) {
+                throw error;
+            }
+            throw new HttpException('Unexpected server error', HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
 
     @Post('login')
     async login(@Body() loginDto: LoginDto) {
