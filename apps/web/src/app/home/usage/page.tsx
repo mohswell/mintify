@@ -72,10 +72,17 @@ export default function FileAnalysisPage() {
                 hunks={file.hunks}
                 tokens={tokenize(file.hunks)}
             >
-                {(hunks) => hunks}
+                {(hunks) =>
+                    hunks.map((hunk, index) => (
+                        <div key={index} className="hunk">
+                            {hunk.content}
+                        </div>
+                    ))
+                }
             </Diff>
         ));
     };
+
 
     if (loading) {
         return (
