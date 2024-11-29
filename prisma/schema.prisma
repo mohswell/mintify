@@ -15,128 +15,153 @@ datasource db {
 }
 
 model ApiKey {
-  id          BigInt    @id @default(autoincrement())
-  userId      BigInt
-  apiKey      String    @unique
-  status      ApiKeyStatus @default(ACTIVE)
-  usageCount  Int       @default(0)
-  createdAt   DateTime  @default(now())
-  lastUsedAt  DateTime?
-  user        User      @relation(fields: [userId], references: [id])
+  id         BigInt       @id @default(autoincrement())
+  userId     BigInt
+  apiKey     String       @unique
+  status     ApiKeyStatus @default(ACTIVE)
+  usageCount Int          @default(0)
+  createdAt  DateTime     @default(now())
+  lastUsedAt DateTime?
+  user       User         @relation(fields: [userId], references: [id])
 }
 
 model User {
-  id          BigInt    @id @default(autoincrement())
-  email       String    @unique
-  firstName   String?
-  lastName    String?
-  username    String?
-  password    String?
-  isPremium Boolean  @default(false) 
-  isAdmin   Boolean  @default(false)
-  isInactive Boolean @default(false)
-  apiKeys     ApiKey[]
-  sessions    Session[]
-  pullRequests  PullRequest[]
+  id                  BigInt        @id @default(autoincrement())
+  email               String        @unique
+  firstName           String?
+  lastName            String?
+  username            String?
+  password            String?
+  isPremium           Boolean       @default(false)
+  isAdmin             Boolean       @default(false)
+  isInactive          Boolean       @default(false)
+  apiKeys             ApiKey[]
+  sessions            Session[]
+  pullRequests        PullRequest[]
   phone               String?
   aiUserToken         String?
-  role                UserRole  @default(USER)
-  maxRequestsPerDay   Int?      @default(10)
+  role                UserRole      @default(USER)
+  maxRequestsPerDay   Int?          @default(10)
   githubRepositoryUrl String?
   registrationDate    DateTime?
-  isActive            Boolean   @default(true)
+  isActive            Boolean       @default(true)
   aiModelVersion      String?
-  githubId   BigInt? 
-  avatarUrl  String?
+  githubId            BigInt?
+  avatarUrl           String?
+  userTiers           UserTier[]
 }
 
 model Session {
-  id          BigInt    @id @default(autoincrement())
-  userId      BigInt
-  token       String    @unique
-  createdAt   DateTime  @default(now())
-  expiresAt   DateTime
-  user        User      @relation(fields: [userId], references: [id])
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt
+  token     String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model PullRequest {
-  id                BigInt   @id @default(autoincrement())
-  prNumber          Int      @unique
-  title             String
-  description       String
-  author           String
-  authorUsername    String   
-  authorAvatar     String   
-  url              String
-  baseBranch       String
-  headBranch       String
-  baseRepository   String   
-  headRepository   String   
-  status           PRStatus @default(OPEN)
-  isDraft          Boolean  @default(false)
-  labels           String[] 
-  reviewers        String[] 
-  comments         Int      
-  additions        Int      
-  deletions        Int     
-  changedFiles     Int      
-  mergeable        Boolean?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  closedAt         DateTime? 
-  mergedAt         DateTime? 
-  commits          Commit[]
-  analyzedFiles    FileAnalysis[]
-  userId           BigInt
-  fileAnalysis     BigInt @default(1)
-  user             User     @relation(fields: [userId], references: [id])
+  id             BigInt         @id @default(autoincrement())
+  prNumber       Int            @unique
+  title          String
+  description    String
+  author         String
+  authorUsername String
+  authorAvatar   String
+  url            String
+  baseBranch     String
+  headBranch     String
+  baseRepository String
+  headRepository String
+  status         PRStatus       @default(OPEN)
+  isDraft        Boolean        @default(false)
+  labels         String[]
+  reviewers      String[]
+  comments       Int
+  additions      Int
+  deletions      Int
+  changedFiles   Int
+  mergeable      Boolean?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  closedAt       DateTime?
+  mergedAt       DateTime?
+  commits        Commit[]
+  analyzedFiles  FileAnalysis[]
+  userId         BigInt
+  fileAnalysis   BigInt @default(1)
+  user           User           @relation(fields: [userId], references: [id])
 }
 
 model Commit {
-  id           BigInt   @id @default(autoincrement())
-  commitHash   String   @unique
-  message      String
-  timestamp    DateTime @default(now())
-  authorEmail  String
-  authorName      String  
-  authorUsername  String   
-  committerEmail  String   
-  committerName   String   
+  id             BigInt       @id @default(autoincrement())
+  commitHash     String       @unique
+  message        String
+  timestamp      DateTime     @default(now())
+  authorEmail    String
+  authorName     String
+  authorUsername String
+  committerEmail String
+  committerName  String
   stats          CommitStats?
-  date         DateTime
-  pullRequestId BigInt
-  pullRequest  PullRequest @relation(fields: [pullRequestId], references: [id])
+  date           DateTime
+  pullRequestId  BigInt
+  pullRequest    PullRequest  @relation(fields: [pullRequestId], references: [id])
 }
 
 model CommitStats {
-  id              BigInt   @id @default(autoincrement())
-  additions       Int
-  deletions       Int
-  changedFiles    Int
-  commitId        BigInt   @unique
-  commit          Commit   @relation(fields: [commitId], references: [id])
+  id           BigInt @id @default(autoincrement())
+  additions    Int
+  deletions    Int
+  changedFiles Int
+  commitId     BigInt @unique
+  commit       Commit @relation(fields: [commitId], references: [id])
 }
 
 model FileAnalysis {
-  id                BigInt      @id @default(autoincrement())
+  id                BigInt           @id @default(autoincrement())
   prNumber          Int
   filePath          String
   fileType          FileType
-  status            FileStatus  @default(PENDING)
-  additions         Int         @default(0)
-  deletions         Int         @default(0)
-  totalChanges      Int         @default(0)
-  rawDiff           String?     
+  status            FileStatus       @default(PENDING)
+  additions         Int              @default(0)
+  deletions         Int              @default(0)
+  totalChanges      Int              @default(0)
+  rawDiff           String?
   aiAnalysisStatus  AiAnalysisStatus @default(PENDING)
   aiAnalysisResult  String?
   complexityScore   Float?
-  securityIssues    Int         @default(0)
-  performanceIssues Int         @default(0)
+  securityIssues    Int              @default(0)
+  performanceIssues Int              @default(0)
   analyzedAt        DateTime?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
   pullRequestId     BigInt
-  pullRequest       PullRequest @relation(fields: [pullRequestId], references: [id])
+  pullRequest       PullRequest      @relation(fields: [pullRequestId], references: [id])
+}
+
+model Tier {
+  id          BigInt      @id @default(autoincrement())
+  name        TierName    // Use the enum for predefined tier names
+  description String?
+  price       Float
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  userTiers   UserTier[] 
+}
+
+model UserTier {
+  id          BigInt     @id @default(autoincrement())
+  userId      BigInt
+  tierId      BigInt
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user        User       @relation(fields: [userId], references: [id])
+  tier        Tier       @relation(fields: [tierId], references: [id])
+
+  @@unique([userId, tierId]) // Prevent duplicate records for the same user-tier pair
 }
 
 // Enums for additional type safety
@@ -182,4 +207,11 @@ enum AiAnalysisStatus {
   COMPLETED
   FAILED
   PARTIAL
+}
+
+enum TierName {
+  FREE
+  PREMIUM
+  PRO
+  ENTERPRISE
 }
