@@ -5,7 +5,7 @@ import { PrismaService } from '~/factories';
 export class SessionGuard {
   private readonly logger = new Logger(SessionGuard.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async createSession(userId: bigint, token: string, expiresAt: Date) {
     try {
@@ -107,6 +107,25 @@ export class SessionGuard {
       this.logger.error(`Error deleting session: ${(error as any).message}`, (error as any).stack);
       throw new InternalServerErrorException({
         message: 'Session deletion failed',
+        details: (error as any).message,
+      });
+    }
+  }
+
+  async findActiveSessions(userId: bigint) {
+    try {
+      return await this.prisma.session.findMany({
+        where: {
+          userId,
+          expiresAt: {
+            gt: new Date(),
+          },
+        },
+      });
+    } catch (error) {
+      this.logger.error(`Error finding active sessions: ${(error as any).message}`, (error as any).stack);
+      throw new InternalServerErrorException({
+        message: 'Failed to find active sessions',
         details: (error as any).message,
       });
     }

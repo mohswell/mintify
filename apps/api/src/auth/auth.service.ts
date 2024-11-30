@@ -10,7 +10,7 @@ export class AuthService {
     private readonly sessionGuard: SessionGuard,
     private readonly jwtGuard: JwtGuard,
     private readonly userProvider: UserProvider,
-  ) {}
+  ) { }
 
   async signup(userDto: UserDto) {
     try {
@@ -59,13 +59,24 @@ export class AuthService {
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000 * 7);
 
       // Ensure user.id is converted to BigInt
-      await this.sessionGuard.createSession(typeof user.id === 'bigint' ? user.id : BigInt(user.id), token, expiresAt);
+      const userId = typeof user.id === 'bigint' ? user.id : BigInt(user.id);
 
+      // Optional: Invalidate any existing active sessions for this user
+      const existingActiveSessions = await this.sessionGuard.findActiveSessions(userId);
+      for (const session of existingActiveSessions) {
+        await this.sessionGuard.deleteSession(session.token);
+      }
+
+      // Create new session
+      await this.sessionGuard.createSession(userId, token, expiresAt);
+
+      // Exclude sessions from the returned user object
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password: _, ...userWithoutPassword } = user;
+      const { password, sessions: _, ...userWithoutSensitiveData } = user;
+
       return {
         user: {
-          ...userWithoutPassword,
+          ...userWithoutSensitiveData,
           id: typeof user.id === 'bigint' ? Number(user.id) : user.id,
         },
         token,

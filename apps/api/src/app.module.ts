@@ -78,18 +78,20 @@ export class AppModule implements NestModule {
 
     consumer
       .apply(ContentTypeMiddleware)
-      .forRoutes('*');
+      .exclude('/')
+      .forRoutes({ path: '*', method: RequestMethod.POST });
 
-  consumer
+
+    consumer
       .apply(JwtMiddleware)
       .exclude(
         '/',
         'api/v1/auth/signup',
         'api/v1/auth/login',
-    { path: 'api/v1/auth/github-login', method: RequestMethod.POST }
-  )
+        { path: 'api/v1/auth/github-login', method: RequestMethod.POST }
+      )
       .forRoutes(
         "*"
-  );
-}
+      );
+  }
 }
