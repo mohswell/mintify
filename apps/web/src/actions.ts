@@ -213,15 +213,42 @@ export const fetchAllPRFileAnalysis = async () => {
         'Authorization': `Bearer ${token}`
       }
     });
-    return { 
-      data: response.data.data, 
-      error: null 
+    return {
+      data: response.data.data,
+      error: null
     };
   } catch (err: any) {
     console.error('Failed to fetch file analyses:', err);
-    return { 
-      data: [], 
-      error: err.response?.data?.message || 'Failed to fetch file analyses' 
+    return {
+      data: [],
+      error: err.response?.data?.message || 'Failed to fetch file analyses'
+    };
+  }
+};
+
+export const getApiKeyUsageStats = async () => {
+  const token = useAuthStore.getState().token;
+  try {
+    const res = await fetch(`${API_URL}/access-token/usage`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to fetch API key usage stats");
+    }
+
+    return { ok: true, data };
+  } catch (error) {
+    console.error("API key usage stats error:", error);
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Unknown error"
     };
   }
 };
