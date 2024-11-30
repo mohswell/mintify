@@ -12,7 +12,7 @@ export class AuthService {
     private readonly userProvider: UserProvider,
   ) {}
 
-  async signup(userDto: UserDto) {
+  async signup(userDto: any) {
     try {
       const user = await this.userProvider.createUser(userDto);
       return {
@@ -21,6 +21,7 @@ export class AuthService {
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
+        console.error('Validation error during signup:', error.getResponse());
         throw error;
       }
       console.error('Signup error:', error);
@@ -28,7 +29,7 @@ export class AuthService {
     }
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: any) {
     try {
       const user = await this.userProvider.findUserByEmail(loginDto.email);
       if (!user) {
@@ -71,6 +72,10 @@ export class AuthService {
         token,
       };
     } catch (error) {
+      if (error instanceof BadRequestException) {
+        console.error('Validation error during login:', error.getResponse());
+        throw error;
+      }
       console.error('Login error:', error);
       throw new InternalServerErrorException('An error occurred during login');
     }
