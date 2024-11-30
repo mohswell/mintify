@@ -35,7 +35,7 @@ export const navItems = [
     icon: <GitPullRequest className="h-5 w-5" />,
   },
   {
-    label: "Usage",
+    label: "Code Changes",
     href: "/home/usage",
     icon: <Package className="h-5 w-5" />,
   },
@@ -45,7 +45,7 @@ export const navItems = [
   //   icon: <Key className="h-5 w-5" />,
   // },
   {
-    label: "AI Analysis",
+    label: "AI Usage",
     href: "/home/analytics",
     icon: <BarChart className="h-5 w-5" />,
   },
