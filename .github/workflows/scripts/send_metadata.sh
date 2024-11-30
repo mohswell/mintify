@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
+# Validate commit history
 if [[ "$COMMIT_HISTORY" == "Unable to fetch commit history." ]]; then
   echo "Error: Commit history is invalid. Aborting."
   exit 1
@@ -12,16 +13,19 @@ IFS=$'\n'
 commit_list=()
 for commit in ${COMMIT_HISTORY}; do
   IFS='|' read -r sha message author_email author_name committer_email committer_name date <<<"$commit"
-  
+
+  # Escape commit message
+  message=$(echo "$message" | jq -R .)
+
   # Fetch commit stats
-  stats=$(git show --stat --format='' $sha | tail -n1)
-  files_changed=$(echo $stats | grep -oE '[0-9]+ file' | cut -d' ' -f1)
-  insertions=$(echo $stats | grep -oE '[0-9]+ insertion' | cut -d' ' -f1)
-  deletions=$(echo $stats | grep -oE '[0-9]+ deletion' | cut -d' ' -f1)
-  
+  stats=$(git show --stat --format='' $sha | tail -n1 || echo "")
+  files_changed=$(echo "$stats" | grep -oE '[0-9]+ file' | cut -d' ' -f1 || echo "0")
+  insertions=$(echo "$stats" | grep -oE '[0-9]+ insertion' | cut -d' ' -f1 || echo "0")
+  deletions=$(echo "$stats" | grep -oE '[0-9]+ deletion' | cut -d' ' -f1 || echo "0")
+
   commit_list+=("{
     \"sha\":\"$sha\",
-    \"message\":\"$message\",
+    \"message\":$message,
     \"author_email\":\"$author_email\",
     \"author_name\":\"$author_name\",
     \"committer_email\":\"$committer_email\",
@@ -89,11 +93,11 @@ metadata=$(jq -n \
     commits: $commits
   }')
 
-
-echo "Commit JSON: $commit_json"
 echo "Metadata: $metadata"
 
 curl -X POST "$BASE_APP_URL/github/store-data" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
-  -d "$metadata" -v
+  -d "$metadata" \
+  --connect-timeout 10 \
+  --max-time 30 -v
