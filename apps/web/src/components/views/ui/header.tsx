@@ -21,16 +21,21 @@ import Cookies from "js-cookie";
 import Image from "next/image";
 
 export default function Header() {
-  const greeting = useGreeting();
-  const user = useAuthStore.getState().user?.firstName || 'Dev';
+  const [user, setUser] = React.useState<string>("");
+  const [theme, setTheme] = React.useState<string>("light"); // Keep track of the theme
+  const greeting = useGreeting(theme === "dark");
   const profileImage = useAuthStore.getState().user?.avatarUrl;
   const logout = useAuthStore((state) => state.logout);
   const router = useRouter();
 
+  React.useEffect(() => {
+    const currentUser = useAuthStore.getState().user?.firstName || "Dev";
+    setUser(currentUser);
+  }, []);
+
   function handleLogout() {
     logout();
     Cookies.remove(SESSION_NAME);
-
     router.push("/");
   }
 
@@ -40,9 +45,11 @@ export default function Header() {
       <div className="w-full flex-1">
         <form>
           <div className="relative">
-            <div className="text-lg font-semibold">
-              {user && `${user}`}
-              {greeting && `, ${greeting}`}
+            <div className="relative">
+              <div className="text-lg font-semibold md:text-base overflow-hidden text-ellipsis whitespace-nowrap">
+                {user && `${user}`}
+                {greeting && `, ${greeting}`}
+              </div>
             </div>
           </div>
         </form>
@@ -51,7 +58,7 @@ export default function Header() {
         <Bell className="h-4 w-4" />
         <span className="sr-only">Toggle notifications</span>
       </Button>
-      <ModeToggle />
+      <ModeToggle onThemeChange={setTheme} />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="link" size="icon" className="rounded-full">
@@ -60,6 +67,8 @@ export default function Header() {
                 src={profileImage}
                 alt="User Avatar"
                 className="h-8 w-8 rounded-full object-cover"
+                width={32}
+                height={32}
               />
             ) : (
               <CircleUser className="h-5 w-5" />
@@ -71,7 +80,6 @@ export default function Header() {
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem>Settings</DropdownMenuItem>
-          {/* <DropdownMenuItem>Support</DropdownMenuItem> */}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
         </DropdownMenuContent>
@@ -79,3 +87,4 @@ export default function Header() {
     </header>
   );
 }
+
