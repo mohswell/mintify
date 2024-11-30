@@ -84,7 +84,7 @@ metadata=$(jq -n \
     baseRepository: $base_repository,
     headRepository: $head_repository,
     isDraft: ($draft == "true"),
-    labels: ($labels | split(",") | map(select(. != ""))),
+    labels: ($labels | select(. != null and . != "") | split(",") | map(. | trim) | map(select(. != ""))),
     reviewers: ($reviewers | split(",") | map(select(. != ""))),
     stats: $stats,
     mergeable: $mergeable,
