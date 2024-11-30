@@ -12,12 +12,12 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu";
 
-export function ModeToggle({ onThemeChange }: { onThemeChange: (theme: string) => void }) {
+export function ModeToggle({ onThemeChange }: { onThemeChange?: (theme: string) => void }) {
   const { setTheme, theme } = useTheme();
 
   const handleThemeChange = (newTheme: string) => {
     setTheme(newTheme);
-    onThemeChange(newTheme); // Notify the parent about the theme change
+    if (onThemeChange) onThemeChange(newTheme); // Notify the parent about the theme change
   };
 
   return (
