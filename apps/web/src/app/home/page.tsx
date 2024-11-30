@@ -131,7 +131,7 @@ export default function HomePage() {
             <div className="bg-gray-50 text-gray-600 px-4 py-2">
               {block.header}
             </div>
-            {block.changes.map((change, changeIndex) => (
+            {block.changes.map((change: any, changeIndex: any) => (
               <div
                 key={changeIndex}
                 className={`px-4 py-1 whitespace-pre 
