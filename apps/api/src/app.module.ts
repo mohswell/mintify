@@ -81,7 +81,8 @@ export class AppModule implements NestModule {
         '/',
         'api/v1/auth/signup',
         'api/v1/auth/login',
-        { path: 'api/v1/auth/github-login', method: RequestMethod.POST }
+        { path: 'api/v1/auth/github-login', method: RequestMethod.POST },
+        'api/v1/health'
       )
       .forRoutes(
         "*"

@@ -14,6 +14,7 @@ export class AuthService {
 
   async signup(userDto: any) {
     try {
+      console.log('Data passed to userProvider:', userDto);
       const user = await this.userProvider.createUser(userDto);
       return {
         ...user,

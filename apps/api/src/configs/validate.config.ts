@@ -1,7 +1,7 @@
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 
 export const validateConfig = new ValidationPipe({
-  whitelist: true, // Strips unrecognized properties
+  whitelist: false, // Strips unrecognized properties flse now
   stopAtFirstError: false, // Collects all validation errors
   transform: true, // Automatically transforms request data to DTO types
   enableDebugMessages: true, // Enable debugging info
@@ -10,10 +10,10 @@ export const validateConfig = new ValidationPipe({
     target: false, // Hides "target" in validation error output
     value: true, // Shows invalid values in errors
   },
-  exceptionFactory: (errors) => {
-    console.error('Validation Errors:', errors);
-    return new BadRequestException(
-      errors.map((err) => Object.values(err.constraints).join(', ')).join('; ')
-    );
-  },
+  // exceptionFactory: (errors) => {
+  //   console.error('Validation Errors:', errors);
+  //   return new BadRequestException(
+  //     errors.map((err) => Object.values(err.constraints).join(', ')).join('; ')
+  //   );
+  // },
 });
