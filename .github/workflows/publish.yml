@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for tag operations
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -57,9 +59,20 @@ jobs:
           minor=$(echo "$latest_version" | cut -d. -f2)
           patch=$(echo "$latest_version" | cut -d. -f3)
           
-          # Simple increment: if v0.0.1 exists, go to v0.0.2
-          new_patch=$((patch + 1))
-          new_version="${major}.${minor}.${new_patch}"
+          # Increment version logic
+          if [ "$patch" -lt 9 ]; then
+            # Simple patch increment
+            new_patch=$((patch + 1))
+            new_version="${major}.${minor}.${new_patch}"
+          elif [ "$minor" -lt 9 ]; then
+            # Reset patch to 0, increment minor
+            new_minor=$((minor + 1))
+            new_version="${major}.${new_minor}.0"
+          else
+            # Reset minor and patch to 0, increment major
+            new_major=$((major + 1))
+            new_version="${new_major}.0.0"
+          fi
           
           echo "Calculated new version: v${new_version}"
           
@@ -72,6 +85,14 @@ jobs:
           # Set the new version
           echo "new_version=$new_version" >> $GITHUB_ENV
           echo "::set-output name=new_version::$new_version"
+
+      - name: Get Latest Commit Message
+        id: commit_message
+        run: |
+          latest_commit_message=$(git log -1 --pretty=%B)
+          # Escape special characters for use in GitHub release
+          escaped_message=$(echo "$latest_commit_message" | sed 's/"/\&quot;/g')
+          echo "commit_message=$escaped_message" >> $GITHUB_ENV
 
       - name: Push New Tag
         run: |
@@ -90,16 +111,11 @@ jobs:
         with:
           tag_name: v${{ env.new_version }}
           name: Release v${{ env.new_version }}
+          body: ${{ env.commit_message }}
           draft: false
           prerelease: false
-          files: artifact.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Debug Create Release Outputs
-        run: |
-          echo "Upload URL: ${{ steps.create_release.outputs.upload_url }}"
-          echo "Release ID: ${{ steps.create_release.outputs.id }}"
 
       - name: Create artifact for apps/web
         run: tar -czvf artifact.tar.gz apps/web/.next

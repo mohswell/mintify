@@ -1,5 +1,5 @@
 import { BaseController } from '~decorators/version.decorator';
-import { Body, Post, HttpException, HttpStatus } from '@nestjs/common';
+import { Body, Post, Get, HttpException, HttpStatus, Request } from '@nestjs/common';
 import { ApiKeyService } from './api.service';
 // import { SkipThrottle, Throttle } from '@nestjs/throttler';
 
@@ -22,6 +22,29 @@ export class ApiController {
                 (error as Error).message || 'Internal server error',
                 HttpStatus.INTERNAL_SERVER_ERROR,
             );
+        }
+    }
+
+    @Get('usage')
+    async getApiKeyUsageStats(@Request() req) {
+        const userId = req.user.userId;
+
+        try {
+            const usageStats = await this.apiKeyService.getApiKeyUsageStats(userId);
+
+            // Transform data into the format expected by frontend
+            const chartData = usageStats.map(stat => ({
+                date: stat.date.toISOString().split('T')[0],
+                usage: stat.usage
+            }));
+
+            return {
+                chartData,
+                totalUsage: usageStats.reduce((sum, stat) => sum + stat.usage, 0)
+            };
+        } catch (error) {
+            console.error("Failed to retrieve API key usge stats", error);
+            throw new Error('Failed to retrieve API key usage statistics');
         }
     }
 }
