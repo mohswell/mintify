@@ -16,68 +16,70 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/views/ui/chart";
-import { chartData } from ".";
-
-// export const metadata = {
-//   title: "Analytics",
-//   description: "An interactive bar chart",
-// };
+import { getApiKeyUsageStats } from "@/actions";
+import { IconLoader } from "@tabler/icons-react";
 
 const chartConfig = {
   views: {
-    label: "Page Views",
-  },
-  desktop: {
-    label: "Desktop",
+    label: "API Usage",
     color: "hsl(var(--primary))",
-  },
-  mobile: {
-    label: "Mobile",
-    color: "hsl(var(--destructive))",
-  },
+  }
 } satisfies ChartConfig;
 
 export default function Analytics() {
-  const [activeChart, setActiveChart] =
-    React.useState<keyof typeof chartConfig>("desktop");
+  const [chartData, setChartData] = React.useState<any[]>([]);
+  const [total, setTotal] = React.useState<number>(0);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  const total = React.useMemo(
-    () => ({
-      desktop: chartData.reduce((acc, curr) => acc + curr.desktop, 0),
-      mobile: chartData.reduce((acc, curr) => acc + curr.mobile, 0),
-    }),
-    []
-  );
+  React.useEffect(() => {
+    const fetchUsageStats = async () => {
+      setIsLoading(true);
+      try {
+        const response = await getApiKeyUsageStats();
+
+        if (response.ok) {
+          setChartData(response.data.chartData);
+          setTotal(response.data.totalUsage);
+        } else {
+          console.error("Failed to fetch usage stats");
+        }
+      } catch (error) {
+        console.error("Error fetching usage stats:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsageStats();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-white flex items-center justify-center z-50">
+        <IconLoader className="h-12 w-12 text-black dark:text-white animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <section className="flex items-center justify-center p-3 md:p-12 w-full">
       <Card className="w-full">
         <CardHeader className="flex flex-col items-stretch space-y-0 border-b p-0 sm:flex-row">
           <div className="flex flex-1 flex-col justify-center gap-1 px-6 py-5 sm:py-6">
-            <CardTitle>Bar Chart - Interactive</CardTitle>
+            <CardTitle>API Usage Analytics</CardTitle>
             <CardDescription>
-              Showing total visitors for the last 3 months
+              Showing API usage for the last 3 months
             </CardDescription>
           </div>
           <div className="flex">
-            {["desktop", "mobile"].map((key) => {
-              const chart = key as keyof typeof chartConfig;
-              return (
-                <button
-                  key={chart}
-                  data-active={activeChart === chart}
-                  className="relative z-30 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l data-[active=true]:bg-muted/50 sm:border-l sm:border-t-0 sm:px-8 sm:py-6"
-                  onClick={() => setActiveChart(chart)}
-                >
-                  <span className="text-xs text-muted-foreground">
-                    {chartConfig[chart].label}
-                  </span>
-                  <span className="text-lg font-bold leading-none sm:text-3xl">
-                    {total[key as keyof typeof total].toLocaleString()}
-                  </span>
-                </button>
-              );
-            })}
+            <div className="relative z-30 flex flex-1 flex-col justify-center gap-1 px-6 py-4 text-left">
+              <span className="text-xs text-muted-foreground">
+                Total Usage
+              </span>
+              <span className="text-lg font-bold leading-none sm:text-3xl">
+                {total.toLocaleString()}
+              </span>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="px-2 sm:p-6">
@@ -123,7 +125,7 @@ export default function Analytics() {
                   />
                 }
               />
-              <Bar dataKey={activeChart} fill={`var(--color-${activeChart})`} />
+              <Bar dataKey="usage" fill={`var(--color-views)`} />
             </BarChart>
           </ChartContainer>
         </CardContent>
