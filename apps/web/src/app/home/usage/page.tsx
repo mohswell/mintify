@@ -1,11 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Diff, parseDiff, tokenize } from 'react-diff-view';
-import 'react-diff-view/style/index.css';
-import { fetchAllPRFileAnalysis } from '@/actions';
+import { AwaitedReactNode, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal, useEffect, useState } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/views/ui/card';
-import { File as DiffViewFile } from 'react-diff-view';
 import {
     Select,
     SelectContent,
@@ -14,9 +10,9 @@ import {
     SelectValue,
 } from '@/components/views/ui/select';
 import { Badge } from '@/components/views/ui/badge';
-import { FileIcon, GitBranchIcon, ChevronDownIcon } from 'lucide-react';
-import notification from '@/lib/notification';
-import React from 'react';
+import { FileIcon, GitBranchIcon, GitCommitIcon, UserIcon } from 'lucide-react';
+import Link from 'next/link';
+import { fetchAllPRFileAnalysis } from '@/actions';
 
 interface FileAnalysis {
     id: string;
@@ -27,58 +23,65 @@ interface FileAnalysis {
     rawDiff: string;
     fileType: string;
     pullRequest: {
+        id: string;
         title: string;
         url: string;
         author: string;
+        authorUsername?: string;
+        authorAvatar?: string;
         createdAt: string;
         status: string;
     };
 }
 
-interface PullRequest {
-    id: string;
-    number: number;
-    title: string;
-    fileAnalyses: FileAnalysis[];
-}
+// Custom diff parsing function
+const parseDiff = (rawDiff: string) => {
+    const lines = rawDiff.split('\n').slice(2); // Remove custom header
+    const diffBlocks = [];
+    let currentBlock: any = null;
 
-interface DiffFile {
-    type: string;
-    hunks: DiffHunk[];
-    additions: number;
-    deletions: number;
-}
+    lines.forEach(line => {
+        if (line.startsWith('+++') || line.startsWith('---')) {
+            // File header lines, skip
+            return;
+        }
 
-interface DiffHunk {
-    content: string;
-    oldStart: number;
-    oldLines: number;
-    newStart: number;
-    newLines: number;
-    changes: DiffChange[];
-}
+        if (line.startsWith('@@')) {
+            // Start of a new hunk
+            if (currentBlock) {
+                diffBlocks.push(currentBlock);
+            }
+            currentBlock = {
+                header: line,
+                changes: []
+            };
+        } else if (currentBlock) {
+            // Diff lines
+            if (line.startsWith('+')) {
+                currentBlock.changes.push({
+                    type: 'insert',
+                    content: line.slice(1),
+                });
+            } else if (line.startsWith('-')) {
+                currentBlock.changes.push({
+                    type: 'delete',
+                    content: line.slice(1),
+                });
+            } else if (line.startsWith(' ')) {
+                currentBlock.changes.push({
+                    type: 'normal',
+                    content: line.slice(1),
+                });
+            }
+        }
+    });
 
-interface DiffChange {
-    type: 'add' | 'del' | 'normal';
-    content: string;
-    lineNumber?: number;
-    newLineNumber?: number;
-}
+    // Add last block
+    if (currentBlock) {
+        diffBlocks.push(currentBlock);
+    }
 
-const parseGitDiff = (rawDiff: string) => {
-    const lines = rawDiff.split('\n');
-    const fileNameMatch = lines.length > 0 ? lines[0]?.match(/^### File: (.+)/) : null;
-
-    // Use optional chaining to safely access the matched group
-    const fileName = fileNameMatch?.[1] || ''; // This will default to an empty string if fileNameMatch is undefined
-
-    // Remove the custom header to get pure git diff
-    const pureDiff = lines.slice(2).join('\n');
-
-    return {
-        fileName,
-        diff: pureDiff
-    };
+    return diffBlocks;
 };
 
 export default function FileAnalysisPage() {
@@ -88,115 +91,59 @@ export default function FileAnalysisPage() {
 
     useEffect(() => {
         const loadAnalyses = async () => {
-            const { data, error } = await fetchAllPRFileAnalysis();
-            if (data) {
-                setFileAnalyses(data);
-                if (data.length > 0) {
-                    setSelectedFileId(data[0].id);
+            try {
+                const { data, error } = await fetchAllPRFileAnalysis();
+                if (data) {
+                    const processedAnalyses = data.map((analysis: { pullRequest: { authorUsername: any; author: any; }; }) => ({
+                        ...analysis,
+                        pullRequest: {
+                            ...analysis.pullRequest,
+                            author: analysis.pullRequest?.authorUsername || analysis.pullRequest?.author || 'Unknown',
+                        }
+                    }));
+
+                    setFileAnalyses(processedAnalyses);
+                    if (processedAnalyses.length > 0) {
+                        setSelectedFileId(processedAnalyses[0].id);
+                    }
                 }
+                setLoading(false);
+            } catch (error) {
+                console.error('Failed to load file analyses:', error);
+                setLoading(false);
             }
-            setLoading(false);
         };
         loadAnalyses();
     }, []);
 
-    const selectedFile = fileAnalyses.find(file => file.id === selectedFileId);
-
-    const parseDiffHeader = (rawDiff: string) => {
-        const lines = rawDiff.split('\n');
-        const fileNameMatch = lines[0]?.match(/^### File: (.+)/);
-        const fileName = fileNameMatch ? fileNameMatch[1] : '';
-        return { fileName };
-    };
-
     const renderDiff = (rawDiff: string) => {
-        const { fileName, diff } = parseGitDiff(rawDiff);
-        const files = parseDiff(diff) as DiffViewFile[]; // Ensure correct typing
-
-        return files.map((file, i) => {
-            // Guard clauses to ensure type safety
-            if (!file || !file.hunks) {
-                console.error("Invalid file format in parsed diff:", file);
-                return null;
-            }
-
-            return (
-                <div key={i} className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-                    {/* File Header */}
-                    <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
-                        <div className="flex items-center space-x-2">
-                            <FileIcon className="w-4 h-4 text-gray-500" />
-                            <span className="font-mono text-sm text-gray-700">{fileName}</span>
+        const diffBlocks = parseDiff(rawDiff);
+        
+        return (
+            <div className="bg-white">
+                {diffBlocks.map((block, blockIndex) => (
+                    <div key={blockIndex} className="border-b last:border-b-0 border-gray-200">
+                        <div className="bg-gray-100 text-gray-600 px-4 py-2 font-mono text-sm">
+                            {block.header}
                         </div>
-                        <div className="flex items-center space-x-3 text-sm">
-                            <span className="text-green-600">+{file.additions ?? 0}</span>
-                            <span className="text-red-600">−{file.deletions ?? 0}</span>
-                        </div>
+                        {block.changes.map((change: { type: string; content: string | number | bigint | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<AwaitedReactNode> | null | undefined; }, changeIndex: Key | null | undefined) => (
+                            <div 
+                                key={changeIndex} 
+                                className={`
+                                    px-4 py-1 font-mono text-sm whitespace-pre 
+                                    ${change.type === 'insert' ? 'bg-green-50 text-green-800' : 
+                                      change.type === 'delete' ? 'bg-red-50 text-red-800' : 
+                                      'bg-white'}
+                                `}
+                            >
+                                {change.type === 'insert' ? '+' : change.type === 'delete' ? '-' : ' '}
+                                {change.content}
+                            </div>
+                        ))}
                     </div>
-
-                    {/* Diff Content */}
-                    <div className="overflow-x-auto bg-white">
-                        <Diff
-                            viewType="unified"
-                            diffType={file.type}
-                            hunks={file.hunks}
-                            tokens={tokenize(file.hunks)}
-                        >
-                            {(hunks) => (
-                                <table className="w-full border-collapse font-mono text-sm">
-                                    <tbody>
-                                        {hunks.map((hunk, hIndex) => (
-                                            <React.Fragment key={hIndex}>
-                                                {/* Hunk Header */}
-                                                <tr className="bg-gray-100 text-gray-600">
-                                                    <td colSpan={2} className="pl-3 w-[1%] whitespace-nowrap border-r border-gray-200">
-                                                        ...
-                                                    </td>
-                                                    <td className="px-3 py-1">
-                                                        @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@
-                                                    </td>
-                                                </tr>
-                                                {/* Hunk Changes */}
-                                                {hunk.changes.map((change, cIndex) => (
-                                                    <tr
-                                                        key={cIndex}
-                                                        className={
-                                                            change.type === 'insert'
-                                                                ? 'bg-green-50'
-                                                                : change.type === 'delete'
-                                                                    ? 'bg-red-50'
-                                                                    : 'bg-white'
-                                                        }
-                                                    >
-                                                        <td className="pl-3 pr-2 text-right text-gray-500 w-[1%] whitespace-nowrap border-r border-gray-200">
-                                                            {change.type === 'delete' ? change.lineNumber ?? '' : ''}
-                                                        </td>
-                                                        <td className="pl-3 pr-2 text-right text-gray-500 w-[1%] whitespace-nowrap border-r border-gray-200">
-                                                            {change.type === 'insert' ? change.lineNumber ?? '' : ''}
-                                                        </td>
-                                                        <td
-                                                            className={`px-3 whitespace-pre ${change.type === 'insert'
-                                                                    ? 'text-green-700'
-                                                                    : change.type === 'delete'
-                                                                        ? 'text-red-700'
-                                                                        : ''
-                                                                }`}
-                                                        >
-                                                            {change.type === 'insert' ? '+' : change.type === 'delete' ? '-' : ' '}
-                                                            {change.content}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </React.Fragment>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </Diff>
-                    </div>
-                </div>
-            );
-        });
+                ))}
+            </div>
+        );
     };
 
     if (loading) {
@@ -207,16 +154,18 @@ export default function FileAnalysisPage() {
         );
     }
 
+    const selectedFile = fileAnalyses.find(file => file.id === selectedFileId);
+
     return (
         <div className="container mx-auto py-8 max-w-7xl">
             <div className="mb-8 space-y-4">
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                     <GitBranchIcon className="w-6 h-6 text-gray-500" />
-                    <h1 className="text-3xl font-bold">File Analysis</h1>
+                    <h1 className="text-3xl font-bold">Pull Request File Analysis</h1>
                 </div>
 
                 <Select value={selectedFileId} onValueChange={setSelectedFileId}>
-                    <SelectTrigger className="w-[400px]">
+                    <SelectTrigger className="w-full max-w-2xl">
                         <SelectValue placeholder="Select a file to analyze" />
                     </SelectTrigger>
                     <SelectContent>
@@ -233,34 +182,55 @@ export default function FileAnalysisPage() {
             </div>
 
             {selectedFile && (
-                <Card className="mb-6 border border-gray-200 rounded-lg shadow-sm">
-                    <CardHeader className="bg-gray-50 border-b border-gray-200">
+                <Card className="border border-gray-200 rounded-lg shadow-sm">
+                    <CardHeader className="bg-gray-50 border-b border-gray-200 p-4">
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-3">
-                                    <FileIcon className="w-5 h-5 text-gray-500" />
-                                    <h3 className="text-lg font-semibold text-gray-700">{selectedFile.filePath}</h3>
+                                    <GitCommitIcon className="w-5 h-5 text-gray-500" />
+                                    <Link 
+                                        href={selectedFile.pullRequest.url} 
+                                        target="_blank" 
+                                        className="text-lg font-semibold text-blue-600 hover:underline"
+                                    >
+                                        {selectedFile.pullRequest.title}
+                                    </Link>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <Badge className="bg-green-50 text-green-700 border border-green-200">
+                                    <Badge 
+                                        variant="outline" 
+                                        className="bg-green-50 text-green-700 border-green-200"
+                                    >
                                         +{selectedFile.additions}
                                     </Badge>
-                                    <Badge className="bg-red-50 text-red-700 border border-red-200">
+                                    <Badge 
+                                        variant="outline" 
+                                        className="bg-red-50 text-red-700 border-red-200"
+                                    >
                                         -{selectedFile.deletions}
                                     </Badge>
                                 </div>
                             </div>
+                            
                             <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                <div className="flex items-center space-x-2">
+                                    <UserIcon className="w-4 h-4 text-gray-400" />
+                                    <span>{selectedFile.pullRequest.author}</span>
+                                </div>
+                                <span>•</span>
                                 <span>PR #{selectedFile.prNumber}</span>
                                 <span>•</span>
-                                <span>{selectedFile.pullRequest.author}</span>
-                                <span>•</span>
                                 <span>{new Date(selectedFile.pullRequest.createdAt).toLocaleDateString()}</span>
-                                <Badge className="capitalize">{selectedFile.pullRequest.status.toLowerCase()}</Badge>
+                                <Badge 
+                                    variant="secondary" 
+                                    className="capitalize"
+                                >
+                                    {selectedFile.pullRequest.status.toLowerCase()}
+                                </Badge>
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-0 overflow-x-auto bg-white">
+                    <CardContent className="p-0">
                         <div className="diff-wrapper text-sm">
                             {renderDiff(selectedFile.rawDiff)}
                         </div>

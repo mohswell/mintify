@@ -101,6 +101,18 @@ export class FileAnalysisService {
           securityIssues: true,
           performanceIssues: true,
           analyzedAt: true,
+          pullRequest: {
+            select: {
+              id: true,
+              title: true,
+              url: true,
+              author: true,
+              authorUsername: true,
+              authorAvatar: true,
+              createdAt: true,
+              status: true,
+            }
+          }
         },
         orderBy: [{ analyzedAt: 'desc' }, { createdAt: 'desc' }],
         take: 100, // Limit to most recent 100 file analyses
