@@ -94,7 +94,7 @@ export default function FileAnalysisPage() {
             try {
                 const { data, error } = await fetchAllPRFileAnalysis();
                 if (data) {
-                    const processedAnalyses = data.map((analysis: { pullRequest: { authorUsername: any; author: any; }; }) => ({
+                    const processedAnalyses = data.map((analysis: { pullRequest: { authorUsername: any; author: any; authorAvatar: any }; }) => ({
                         ...analysis,
                         pullRequest: {
                             ...analysis.pullRequest,
@@ -118,7 +118,7 @@ export default function FileAnalysisPage() {
 
     const renderDiff = (rawDiff: string) => {
         const diffBlocks = parseDiff(rawDiff);
-        
+
         return (
             <div className="bg-white">
                 {diffBlocks.map((block, blockIndex) => (
@@ -127,13 +127,13 @@ export default function FileAnalysisPage() {
                             {block.header}
                         </div>
                         {block.changes.map((change: { type: string; content: string | number | bigint | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<AwaitedReactNode> | null | undefined; }, changeIndex: Key | null | undefined) => (
-                            <div 
-                                key={changeIndex} 
+                            <div
+                                key={changeIndex}
                                 className={`
                                     px-4 py-1 font-mono text-sm whitespace-pre 
-                                    ${change.type === 'insert' ? 'bg-green-50 text-green-800' : 
-                                      change.type === 'delete' ? 'bg-red-50 text-red-800' : 
-                                      'bg-white'}
+                                    ${change.type === 'insert' ? 'bg-green-50 text-green-800' :
+                                        change.type === 'delete' ? 'bg-red-50 text-red-800' :
+                                            'bg-white'}
                                 `}
                             >
                                 {change.type === 'insert' ? '+' : change.type === 'delete' ? '-' : ' '}
@@ -188,41 +188,46 @@ export default function FileAnalysisPage() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-3">
                                     <GitCommitIcon className="w-5 h-5 text-gray-500" />
-                                    <Link 
-                                        href={selectedFile.pullRequest.url} 
-                                        target="_blank" 
+                                    <Link
+                                        href={selectedFile.pullRequest.url}
+                                        target="_blank"
                                         className="text-lg font-semibold text-blue-600 hover:underline"
                                     >
                                         {selectedFile.pullRequest.title}
                                     </Link>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <Badge 
-                                        variant="outline" 
+                                    <Badge
+                                        variant="outline"
                                         className="bg-green-50 text-green-700 border-green-200"
                                     >
                                         +{selectedFile.additions}
                                     </Badge>
-                                    <Badge 
-                                        variant="outline" 
+                                    <Badge
+                                        variant="outline"
                                         className="bg-red-50 text-red-700 border-red-200"
                                     >
                                         -{selectedFile.deletions}
                                     </Badge>
                                 </div>
                             </div>
-                            
+
                             <div className="flex items-center space-x-4 text-sm text-gray-500">
                                 <div className="flex items-center space-x-2">
-                                    <UserIcon className="w-4 h-4 text-gray-400" />
+                                    {/* <UserIcon className="w-4 h-4 text-gray-400" /> */}
+                                    <img
+                                        src={selectedFile.pullRequest.authorAvatar}
+                                        alt={selectedFile.pullRequest.author}
+                                        className="w-4 h-4 rounded-full"
+                                    />
                                     <span>{selectedFile.pullRequest.author}</span>
                                 </div>
                                 <span>•</span>
                                 <span>PR #{selectedFile.prNumber}</span>
                                 <span>•</span>
                                 <span>{new Date(selectedFile.pullRequest.createdAt).toLocaleDateString()}</span>
-                                <Badge 
-                                    variant="secondary" 
+                                <Badge
+                                    variant="secondary"
                                     className="capitalize"
                                 >
                                     {selectedFile.pullRequest.status.toLowerCase()}
