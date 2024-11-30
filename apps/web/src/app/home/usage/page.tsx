@@ -5,6 +5,7 @@ import { Diff, parseDiff, tokenize } from 'react-diff-view';
 import 'react-diff-view/style/index.css';
 import { fetchAllPRFileAnalysis } from '@/actions';
 import { Card, CardHeader, CardContent } from '@/components/views/ui/card';
+import { File as DiffViewFile } from 'react-diff-view';
 import {
     Select,
     SelectContent,
@@ -15,6 +16,7 @@ import {
 import { Badge } from '@/components/views/ui/badge';
 import { FileIcon, GitBranchIcon, ChevronDownIcon } from 'lucide-react';
 import notification from '@/lib/notification';
+import React from 'react';
 
 interface FileAnalysis {
     id: string;
@@ -109,78 +111,93 @@ export default function FileAnalysisPage() {
 
     const renderDiff = (rawDiff: string) => {
         const { fileName, diff } = parseGitDiff(rawDiff);
-        const files = parseDiff(diff);
+        const files = parseDiff(diff) as DiffViewFile[]; // Ensure correct typing
 
-        return files.map((file: DiffFile, i: number) => (
-            <div key={i} className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-                {/* File Header */}
-                <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
-                    <div className="flex items-center space-x-2">
-                        <FileIcon className="w-4 h-4 text-gray-500" />
-                        <span className="font-mono text-sm text-gray-700">{fileName}</span>
-                    </div>
-                    <div className="flex items-center space-x-3 text-sm">
-                        <span className="text-green-600">+{file.additions}</span>
-                        <span className="text-red-600">−{file.deletions}</span>
-                    </div>
-                </div>
+        return files.map((file, i) => {
+            // Guard clauses to ensure type safety
+            if (!file || !file.hunks) {
+                console.error("Invalid file format in parsed diff:", file);
+                return null;
+            }
 
-                {/* Diff Content */}
-                <div className="overflow-x-auto bg-white">
-                    <Diff
-                        viewType="unified"
-                        diffType={file.type}
-                        hunks={file.hunks}
-                        tokens={tokenize(file.hunks)}
-                    >
-                        {(hunks: DiffHunk[]) => (
-                            <table className="w-full border-collapse font-mono text-sm">
-                                <tbody>
-                                    {hunks.map((hunk: DiffHunk) => (
-                                        <>
-                                            {/* Hunk Header */}
-                                            <tr className="bg-gray-100 text-gray-600">
-                                                <td colSpan={2} className="pl-3 w-[1%] whitespace-nowrap border-r border-gray-200">
-                                                    ...
-                                                </td>
-                                                <td className="px-3 py-1">
-                                                    @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@
-                                                </td>
-                                            </tr>
-                                            {/* Hunk Changes */}
-                                            {hunk.changes.map((change, idx) => (
-                                                <tr key={idx}
-                                                    className={
-                                                        change.type === 'add' ? 'bg-green-50' :
-                                                            change.type === 'del' ? 'bg-red-50' : 'bg-white'
-                                                    }
-                                                >
-                                                    <td className="pl-3 pr-2 text-right text-gray-500 w-[1%] whitespace-nowrap border-r border-gray-200">
-                                                        {change.type !== 'add' ? change.lineNumber : ' '}
+            return (
+                <div key={i} className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+                    {/* File Header */}
+                    <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
+                        <div className="flex items-center space-x-2">
+                            <FileIcon className="w-4 h-4 text-gray-500" />
+                            <span className="font-mono text-sm text-gray-700">{fileName}</span>
+                        </div>
+                        <div className="flex items-center space-x-3 text-sm">
+                            <span className="text-green-600">+{file.additions ?? 0}</span>
+                            <span className="text-red-600">−{file.deletions ?? 0}</span>
+                        </div>
+                    </div>
+
+                    {/* Diff Content */}
+                    <div className="overflow-x-auto bg-white">
+                        <Diff
+                            viewType="unified"
+                            diffType={file.type}
+                            hunks={file.hunks}
+                            tokens={tokenize(file.hunks)}
+                        >
+                            {(hunks) => (
+                                <table className="w-full border-collapse font-mono text-sm">
+                                    <tbody>
+                                        {hunks.map((hunk, hIndex) => (
+                                            <React.Fragment key={hIndex}>
+                                                {/* Hunk Header */}
+                                                <tr className="bg-gray-100 text-gray-600">
+                                                    <td colSpan={2} className="pl-3 w-[1%] whitespace-nowrap border-r border-gray-200">
+                                                        ...
                                                     </td>
-                                                    <td className="pl-3 pr-2 text-right text-gray-500 w-[1%] whitespace-nowrap border-r border-gray-200">
-                                                        {change.type !== 'del' ? change.newLineNumber : ' '}
-                                                    </td>
-                                                    <td className={`px-3 whitespace-pre ${change.type === 'add' ? 'text-green-700' :
-                                                            change.type === 'del' ? 'text-red-700' : ''
-                                                        }`}>
-                                                        {change.type === 'add' ? '+' : change.type === 'del' ? '-' : ' '}
-                                                        {change.content}
+                                                    <td className="px-3 py-1">
+                                                        @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@
                                                     </td>
                                                 </tr>
-                                            ))}
-                                        </>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
-                    </Diff>
+                                                {/* Hunk Changes */}
+                                                {hunk.changes.map((change, cIndex) => (
+                                                    <tr
+                                                        key={cIndex}
+                                                        className={
+                                                            change.type === 'insert'
+                                                                ? 'bg-green-50'
+                                                                : change.type === 'delete'
+                                                                    ? 'bg-red-50'
+                                                                    : 'bg-white'
+                                                        }
+                                                    >
+                                                        <td className="pl-3 pr-2 text-right text-gray-500 w-[1%] whitespace-nowrap border-r border-gray-200">
+                                                            {change.type === 'delete' ? change.lineNumber ?? '' : ''}
+                                                        </td>
+                                                        <td className="pl-3 pr-2 text-right text-gray-500 w-[1%] whitespace-nowrap border-r border-gray-200">
+                                                            {change.type === 'insert' ? change.lineNumber ?? '' : ''}
+                                                        </td>
+                                                        <td
+                                                            className={`px-3 whitespace-pre ${change.type === 'insert'
+                                                                    ? 'text-green-700'
+                                                                    : change.type === 'delete'
+                                                                        ? 'text-red-700'
+                                                                        : ''
+                                                                }`}
+                                                        >
+                                                            {change.type === 'insert' ? '+' : change.type === 'delete' ? '-' : ' '}
+                                                            {change.content}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </Diff>
+                    </div>
                 </div>
-            </div>
-        ));
+            );
+        });
     };
-
-
 
     if (loading) {
         return (

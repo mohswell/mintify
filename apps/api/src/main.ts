@@ -28,7 +28,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.enableCors();
   app.useGlobalPipes(validateConfig);
-  app.use(express.json({ limit: '1000kb' }));
+  app.use(express.json({ limit: '2000kb' }));
   app.use(express.urlencoded({ extended: false }));
   const httpAdapterHost = app.get(HttpAdapterHost);
   app.useGlobalFilters(new ApiExceptionsFilter(httpAdapterHost));

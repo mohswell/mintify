@@ -14,7 +14,6 @@ export class AuthController {
     // @Throttle('short') // Applies the short throttler I defined in app.module.ts
     @Post('signup')
     async signup(@Body() userDto: UserDto) {
-        console.log('Received DTO:', userDto); // Debugging
         try {
             const enrichedUserDto = {
                 isPremium: false,

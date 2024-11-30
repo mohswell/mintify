@@ -16,6 +16,7 @@ import { GithubModule } from '~domains/github/github.module';
 import { HealthController } from '~log/health/health.controller';
 import { RequestLoggerMiddleware } from '~middleware/extensions/logger.middleware';
 import { TerminusModule } from '@nestjs/terminus';
+import { ContentTypeMiddleware } from '~middleware/content/content.middleware';
 
 @Module({
   imports: [
@@ -74,17 +75,21 @@ export class AppModule implements NestModule {
     consumer
       .apply(RequestLoggerMiddleware)
       .forRoutes('*');
-      
+
     consumer
+      .apply(ContentTypeMiddleware)
+      .forRoutes('*');
+
+  consumer
       .apply(JwtMiddleware)
       .exclude(
         '/',
         'api/v1/auth/signup',
         'api/v1/auth/login',
-        { path: 'api/v1/auth/github-login', method: RequestMethod.POST }
-      )
+    { path: 'api/v1/auth/github-login', method: RequestMethod.POST }
+  )
       .forRoutes(
         "*"
-      );
-  }
+  );
+}
 }
