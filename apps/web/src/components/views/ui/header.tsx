@@ -1,7 +1,8 @@
+"use client";
+
 import React from "react";
 import MobileNav from "./mobile-nav";
-import { Bell, CircleUser, Search } from "lucide-react";
-import { Input } from "./input";
+import { Bell, CircleUser } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,32 +13,57 @@ import {
 } from "./dropdown-menu";
 import { Button } from "./button";
 import { ModeToggle } from "./mode-toggle";
+import { useGreeting } from "@/hooks";
+import { useAuthStore } from "@/stores/auth";
+import { SESSION_NAME } from "@/lib/constants";
+import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
+import Image from "next/image";
 
 export default function Header() {
+  const greeting = useGreeting();
+  const user = useAuthStore.getState().user?.firstName || 'Dev';
+  const profileImage = useAuthStore.getState().user?.avatarUrl;
+  const logout = useAuthStore((state) => state.logout);
+  const router = useRouter();
+
+  function handleLogout() {
+    logout();
+    Cookies.remove(SESSION_NAME);
+
+    router.push("/");
+  }
+
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
       <MobileNav />
       <div className="w-full flex-1">
         <form>
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search products..."
-              className="w-full appearance-none bg-background pl-8 shadow-none md:w-2/3 lg:w-1/3"
-            />
+            <div className="text-lg font-semibold">
+              {user && `${user}`}
+              {greeting && `, ${greeting}`}
+            </div>
           </div>
         </form>
       </div>
-        <Button variant="link" size="icon" className="ml-auto h-8 w-8">
-            <Bell className="h-4 w-4" />
-            <span className="sr-only">Toggle notifications</span>
-        </Button>
+      <Button variant="link" size="icon" className="ml-auto h-8 w-8">
+        <Bell className="h-4 w-4" />
+        <span className="sr-only">Toggle notifications</span>
+      </Button>
       <ModeToggle />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="link" size="icon" className="rounded-full">
-            <CircleUser className="h-5 w-5" />
+            {profileImage ? (
+              <Image
+                src={profileImage}
+                alt="User Avatar"
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            ) : (
+              <CircleUser className="h-5 w-5" />
+            )}
             <span className="sr-only">Toggle user menu</span>
           </Button>
         </DropdownMenuTrigger>
@@ -45,9 +71,9 @@ export default function Header() {
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem>Settings</DropdownMenuItem>
-          <DropdownMenuItem>Support</DropdownMenuItem>
+          {/* <DropdownMenuItem>Support</DropdownMenuItem> */}
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Logout</DropdownMenuItem>
+          <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
