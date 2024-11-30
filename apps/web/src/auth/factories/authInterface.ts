@@ -17,16 +17,23 @@ declare module 'next-auth' {
 
 export interface AuthUser {
     id: string;
-    first_name: string;
-    last_name: string;
     email: string;
+    firstName: string;
+    lastName: string;  
     username: string;
-    phone_number?: string;
-    is_admin?: false;
-    is_inactive: false;
-    created_at: string;
-    updated_at: string;
-    profile_image?: string;
+    phone?: string | null;
+    isPremium: boolean;
+    isAdmin: boolean;
+    isInactive: boolean; 
+    updatedAt: string;
+    avatarUrl?: string;
+    role: string; 
+    maxRequestsPerDay: number;
+    registrationDate: string; 
+    isActive: boolean;
+    aiUserToken?: string | null;
+    githubId?: string | null;
+    githubRepositoryUrl?: string | null;
 }
 
 export interface GitHubOauthUser extends NextAuthUser {
