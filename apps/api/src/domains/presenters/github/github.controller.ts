@@ -16,21 +16,31 @@ export class GithubController {
 
     @Post('store-data')
     async storeData(@Req() req: any, @Body() prMetadata: any) {
-        console.log('Received request to store Pull Request data', req.body);
+        console.log('Received request:', req.body);
+        console.log('Cleaned Metadata:', prMetadata); 
+
         try {
-            const user = req.user;
+            const user = req.user; 
+            if (!user) {
+                throw new HttpException(
+                    'User information not found in request.',
+                    HttpStatus.UNAUTHORIZED,
+                );
+            }
+
+            console.log('User ID:', user.id);
             const userId = user.id;
 
-            // Clean up the data before passing to service
             const cleanedMetadata = {
                 ...prMetadata,
                 closedAt: prMetadata.closedAt === 'null' ? null : prMetadata.closedAt,
                 mergedAt: prMetadata.mergedAt === 'null' ? null : prMetadata.mergedAt,
                 description: prMetadata.description === 'null' ? null : prMetadata.description,
-                // Remove any trailing semicolons from URLs if present
                 authorAvatar: prMetadata.authorAvatar?.replace(/;$/, ''),
-                prUrl: prMetadata.prUrl?.replace(/;$/, '')
+                prUrl: prMetadata.prUrl?.replace(/;$/, ''),
             };
+
+            console.log('Processed Metadata:', cleanedMetadata);
 
             const result = await this.githubService.storePullRequestData(cleanedMetadata, userId);
             return {
@@ -38,7 +48,7 @@ export class GithubController {
                 data: result,
             };
         } catch (error) {
-            console.error('Error storing pull request data:', error);
+            console.error('Error in storeData:', (error as any).message, (error as any).stack); 
             throw new HttpException(
                 {
                     status: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -48,7 +58,6 @@ export class GithubController {
                 HttpStatus.INTERNAL_SERVER_ERROR,
             );
         }
-
     }
 
     @Get('pull-requests')
