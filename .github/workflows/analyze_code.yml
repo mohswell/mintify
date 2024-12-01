@@ -1,4 +1,4 @@
-name: Code Analysis
+name: AI
 on:
   workflow_dispatch:
   # pull_request:
@@ -13,7 +13,7 @@ permissions:
   issues: write
 
 jobs:
-  mintify_analyze:
+  bunjy_analyze:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

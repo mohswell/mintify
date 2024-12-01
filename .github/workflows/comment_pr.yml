@@ -1,4 +1,4 @@
-name: Mintify Pull Request Feedback
+name: Bunjy Pull Request Feedback
 on:
   # pull_request:
   #   types: [opened, synchronize]
