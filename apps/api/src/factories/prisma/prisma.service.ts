@@ -46,7 +46,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       // Wrap the callback in a transaction to ensure atomic operations
       return await this.$transaction(async (prisma) => {
         return await callback(prisma as unknown as PrismaService);
-      });
+      }, { timeout: 10000 });
     } catch (error) {
       this.logger.error('Query execution failed:', error);
 
