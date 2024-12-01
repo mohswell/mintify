@@ -68,7 +68,7 @@ export function Input(props: InputProps): JSX.Element {
             isTypePassword ? "pr-12" : "px-4",
             leftSection ? "pl-12" : "px-4",
             rightSection ? "pr-12" : "px-4",
-            "border text-dark border-light-gray-6 bg-light-gray-1 placeholder-light-gray-6 dark:text-white dark:border-dark dark:bg-dark-background dark:placeholder-light-gray-7 focus:border-dark dark:focus:border-white rounded-lg h-12 text-base !leading-4 focus:placeholder-transparent dark:focus:placeholder-transparent font-light relative w-full z-[1] transition-all duration-300 ease-in-out disabled:border-light-gray-3 disabled:text-light-gray-7 disabled:bg-light-gray-2 dark:disabled:border-dark-background dark:disabled:text-light-gray-7 dark:disabled:bg-dark",
+            "border text-dark border-light-gray-6 bg-light-gray-1 placeholder-light-gray-6 dark:text-white dark:border-dark dark:bg-dark dark:placeholder-light-gray-7 focus:border-dark dark:focus:border-white rounded-lg h-12 text-base !leading-4 focus:placeholder-transparent dark:focus:placeholder-transparent font-light relative w-full z-[1] transition-all duration-300 ease-in-out disabled:border-light-gray-3 disabled:text-light-gray-7 disabled:bg-light-gray-2 dark:disabled:border-dark-background dark:disabled:text-light-gray-7 dark:disabled:bg-dark",
           )}
           {...rest}
         />
