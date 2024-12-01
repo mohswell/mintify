@@ -87,11 +87,12 @@ export function useGreeting(isDarkMode: boolean) {
       const randomGreeting =
         allGreetings[Math.floor(Math.random() * allGreetings.length)] || "Hello!";
 
-      setGreeting(
-        darkModeJoke
-          ? `${randomGreeting} (P.S. ${darkModeJoke})`
-          : randomGreeting
-      );
+      // Randomly choose between dark mode joke or time-based greeting
+      const finalGreeting = darkModeJoke && Math.random() < 0.5
+        ? darkModeJoke
+        : randomGreeting;
+
+      setGreeting(finalGreeting);
     };
 
     // Update greeting immediately and every interval
