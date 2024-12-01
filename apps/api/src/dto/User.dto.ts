@@ -1,6 +1,6 @@
 import { Transform } from 'class-transformer';
 import { IsString, IsEmail, IsBoolean, IsNotEmpty, IsOptional, IsPhoneNumber, IsEnum, Min, Max, IsDateString, IsInt, MinLength } from 'class-validator';
-import { UserRole } from '~/types';
+import { UserRole } from '@prisma/client';
 
 export class UserDto {
     @IsEmail()
@@ -58,7 +58,7 @@ export class UserDto {
 
     @IsEnum(UserRole, { message: 'Role must be one of: admin, user, moderator, guest' })
     @IsOptional()
-    role?: UserRole = UserRole.User;
+    role?: UserRole = UserRole.USER;
 
     @IsInt()
     @Min(1) 
