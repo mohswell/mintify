@@ -58,18 +58,20 @@ jobs:
           major=$(echo "$latest_version" | cut -d. -f1)
           minor=$(echo "$latest_version" | cut -d. -f2)
           patch=$(echo "$latest_version" | cut -d. -f3)
+
+          # Ensure variables are set to avoid integer expression errors
+          major=${major:-0}
+          minor=${minor:-0}
+          patch=${patch:-0}
           
           # Increment version logic
           if [ "$patch" -lt 9 ]; then
-            # Simple patch increment
             new_patch=$((patch + 1))
             new_version="${major}.${minor}.${new_patch}"
           elif [ "$minor" -lt 9 ]; then
-            # Reset patch to 0, increment minor
             new_minor=$((minor + 1))
             new_version="${major}.${new_minor}.0"
           else
-            # Reset minor and patch to 0, increment major
             new_major=$((major + 1))
             new_version="${new_major}.0.0"
           fi
@@ -82,16 +84,16 @@ jobs:
             exit 1
           fi
           
-          # Set the new version
-          echo "new_version=$new_version" >> $GITHUB_ENV
-          echo "::set-output name=new_version::$new_version"
+          # Set the new version using environment files
+          echo "new_version=${new_version}" >> $GITHUB_ENV
+          # echo "::set-output name=new_version::$new_version"  # Deprecated
 
       - name: Get Latest Commit Message
         id: commit_message
         run: |
           latest_commit_message=$(git log -1 --pretty=%B)
           # Escape special characters for use in GitHub release
-          escaped_message=$(echo "$latest_commit_message" | sed 's/"/\&quot;/g')
+          escaped_message=$(echo "$latest_commit_message" | sed 's/"/\&quot;/g; s/'"'"'/\&apos;/g; s/\$/\\\$/g; s/\&/\&amp;/g')
           echo "commit_message=$escaped_message" >> $GITHUB_ENV
 
       - name: Push New Tag
