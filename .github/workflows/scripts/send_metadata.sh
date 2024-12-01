@@ -102,11 +102,14 @@ metadata=$(jq -n \
   }')
 
 echo "Metadata: $metadata"
+echo "PR_NUMBER: $PR_NUMBER"
 
 # Send metadata to the server
-curl -X POST "$BASE_APP_URL/github/store-data" \
+curl -v -X POST "$BASE_APP_URL/github/store-data" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d "$metadata" \
+  -d '{"prNumber": '"$PR_NUMBER"'}' \
   --connect-timeout 10 \
   --max-time 30 -v
+  
