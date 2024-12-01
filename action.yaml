@@ -1,4 +1,4 @@
-name: 'AI'
+name: 'Bunjy-AI'
 description: 'Integate AI to your code repository with an action powered by Gemini Nano'
 author: 'mohswell'
 branding:
@@ -7,10 +7,10 @@ branding:
 
 inputs:
   BASE_APP_URL:
-    description: 'Base URL for the core server making API calls to Gemini'
+    description: 'Base URL for the Nestjs web server making API calls to Gemini Nano models'
     required: true
   API_KEY:
-    description: 'API key for authentication and authorization'
+    description: 'API key for authentication and authorization grants to Bunjy AI web resources'
     required: true
 
 runs:
