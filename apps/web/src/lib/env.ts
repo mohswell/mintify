@@ -17,6 +17,6 @@ export const SUPABASE_ANON_KEY = assertValue(
 
 
 export const AUTH_REDIRECT_URL = assertValue(
-  process.env.NEXT_PUBLIC_AUTH_REDIRECT_URL || 'https://mintifyapp.vercel.app',
+  process.env.NEXT_PUBLIC_AUTH_REDIRECT_URL || 'https://bunjy.vercel.app',
   "Missing Auth Redirect Url, Taking to the default vercel url"
 );
