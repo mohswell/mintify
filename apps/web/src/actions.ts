@@ -1,8 +1,9 @@
 import { API_URL } from "@/lib/env";
 import { useAuthStore } from "@/stores/auth";
-import { GitHubUser, LoginDetails, SignupDetails, Token } from "@/types";
+import { ApiResponse, GenAiResponse, GitHubUser, LoginDetails, SignupDetails, Token } from "@/types";
 import axios from "axios";
 import { AuthUser } from "./auth/factories/authInterface";
+import { api } from "./server/api";
 
 export const login = async (details: LoginDetails) => {
   const res = await fetch(`${API_URL}/auth/login`, {
@@ -282,3 +283,37 @@ export const updateUserDetails = async (updatedUserDetails: Partial<AuthUser>) =
 
   return { ok: res.ok, data };
 };
+
+
+export async function sendAICodeAnalysis(params: {
+  fileDiff: string;
+  prompt?: string;
+  filePath: string;
+}): Promise<{ ok: boolean; data?: any; error?: string }> {
+  const token = useAuthStore.getState().token;
+
+  if (!token) {
+    console.error("No auth token found");
+    return { ok: false, error: "Authentication token is missing" };
+  }
+
+  try {
+    console.log("Sending API request with token:", token);
+    const response = await axios.post(`${API_URL}/gemini/generate-code`,
+      {
+        code: `File Path: ${params.filePath}\n\nCode Diff:\n${params.fileDiff}\n\nAdditional Context: ${params.prompt || ''}`,
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return { ok: true, data: response.data };
+  } catch (error: any) {
+    console.error("API error:", error.response?.data || error.message);
+    return { ok: false, error: error.message };
+  }
+}
