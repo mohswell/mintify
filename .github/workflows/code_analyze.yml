@@ -1,4 +1,4 @@
-name: Code Analysis
+name: AI
 on:
   workflow_dispatch:
   pull_request:
@@ -15,7 +15,7 @@ permissions:
   issues: write
 
 jobs:
-  code_analysis:
+  analysis:
     if: |
       github.event_name != 'issue_comment' ||
       (github.event.comment.body == '/approve' ||
