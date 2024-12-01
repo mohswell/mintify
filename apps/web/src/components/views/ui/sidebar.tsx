@@ -40,11 +40,11 @@ export const navItems = [
     href: "/home/usage",
     icon: <GitCommit className="h-5 w-5" />,
   },
-  // {
-  //   label: "Access Token",
-  //   href: "/home/access-tokens",
-  //   icon: <Key className="h-5 w-5" />,
-  // },
+  {
+    label: "Access Token",
+    href: "/home/access-tokens",
+    icon: <Key className="h-5 w-5" />,
+  },
   {
     label: "AI Usage",
     href: "/home/analytics",
