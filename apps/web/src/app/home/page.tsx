@@ -34,6 +34,7 @@ export default function GitHubPRFileReview() {
     setIsClient(true);
     const loadAnalyses = async () => {
       try {
+        notification({ type: "info", message: "Loading recents code changes from your Github repository..." });
         const { data, error } = await fetchAllPRFileAnalysis();
         if (data) {
           const processedAnalyses = data.map((analysis: { pullRequest: { authorUsername: any; author: any; authorAvatar: any }; }) => ({
@@ -174,7 +175,11 @@ export default function GitHubPRFileReview() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
-        {selectedFile ? (
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader className="animate-spin h-10 w-10 text-gray-500" /> {/* Loading animation */}
+          </div>
+        ) : selectedFile ? (
           <div className="flex-1">
             {/* File Header */}
             <div className="bg-gray-50 dark:bg-dark border-b border-gray-200 dark:border-gray-800 p-3 flex justify-between items-center">
