@@ -6,8 +6,8 @@ This is an innovative AI-powered analysis tool designed to enhance code review a
 
 ### 1. Authentication and Integration
 - Users setup the action in their workflows.
-- The action requires a `base_app_url` and `api_key` defined in your respository secrets.
-- You'll visit the dashboard page at [Bunjy AI](https://bunjy.vercel.app) to generate an `api_key` and copy the `base_app_url`.
+- The action requires a `BASE_APP_URL` and `API_KEY` defined in your respository secrets.
+- You'll visit the dashboard page at [Bunjy AI](https://bunjy.vercel.app) to generate an `API_KEY` and copy the `BASE_APP_URL`.
 - Users can log in using GitHub OAuth to authorize my core service.
 - The application connects directly to GitHub repositories via the action workflow.
 - Securely retrieves repository and pull request data

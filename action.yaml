@@ -1,16 +1,16 @@
-name: 'Bunjy AI Analysis'
-description: 'Perform AI-powered analysis on GitHub pull requests'
+name: 'AI'
+description: 'Integate AI to your code repository with an action powered by Gemini Nano'
 author: 'mohswell'
 branding:
   icon: 'activity'
   color: 'blue'
 
 inputs:
-  base_app_url:
-    description: 'Base URL for your AI analysis server'
+  BASE_APP_URL:
+    description: 'Base URL for the core server making API calls to Gemini'
     required: true
-  api_key:
-    description: 'API key for authentication'
+  API_KEY:
+    description: 'API key for authentication and authorization'
     required: true
 
 runs:
