@@ -39,7 +39,7 @@ This application provides intelligent insights into GitHub pull requests by anal
 - PR risk assessments based on AI analysis.
 - Reviewer suggestions and code quality highlights.
 
-## 🔑 API Keys
+## API Keys and Base App URL to use as repository secrets
 
 To use this AI app, you will need to obtain an API keys to authorize the middleware server. Here are the steps to get your API keys:
 
@@ -49,13 +49,8 @@ To use this AI app, you will need to obtain an API keys to authorize the middlew
    - On the homepage, click on access tokens and generate a new API Key variable.
    - Copy the generated token and add it to your environment secrets.
 
-## 🌐 Base App URL
-
-The base URL to use the application to be added in a github action is:
-
-```
-https://mintify-production.up.railway.app/api/v1
-```
+**Base App Url**:
+The base URL to use the application to be added in a github action should be copied from the same page where you generate the API key above.
 
 I will soon find a way to use the action without the URL specified, making it more flexible and easier to configure.
 
@@ -69,21 +64,6 @@ I will soon find a way to use the action without the URL specified, making it mo
 2. Sets up the necessary environment variables required for the application.
 3. Sends metadata to the server for further processing and analysis.
 4. Processes comments in pull requests to provide feedback and suggestions.
-
-
-## 🌟 Features
-
-- **AI Analysis**: Uses Google Gemini Nano AI models (`gemini-pro`, `gemini-pro-vision`) to analyze pull requests and commits.
-- **Supabase Integration**: Manages user repositories, sessions and stores metadata.
-- **GitHub OAuth**: Secure GitHub login for seamless access to repository data.
-- **Efficient Monorepo Setup**: Built with Turborepo for shared tooling and caching.
-
-## Future Roadmap
-
-- Enhanced AI models
-- More granular code analysis
-- Machine learning improvements
-- Extended language support
 
 ---
 
@@ -188,6 +168,14 @@ Your support is greatly appreciated!
 ## Contributing
 
 Contributions are welcome! Please fork the repo and create a pull request with your changes and tag me in to review your features.
+
+
+## Future Roadmap
+
+- Enhanced AI models
+- More granular code analysis
+- Machine learning improvements
+- Extended language support
 
 ---
 
