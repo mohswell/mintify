@@ -7,6 +7,12 @@ if [[ "$COMMIT_HISTORY" == "Unable to fetch commit history." || -z "$COMMIT_HIST
   exit 1
 fi
 
+# Validate PR number explicitly
+if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
+  echo "Error: PR_NUMBER is missing or invalid"
+  exit 1
+fi
+
 echo "Sending metadata to server..."
 
 IFS=$'\n'
@@ -84,7 +90,7 @@ metadata=$(jq -n \
     baseRepository: $base_repository,
     headRepository: $head_repository,
     isDraft: ($draft == "true"),
-    labels: ($labels | select(. != null and . != "") | split(",") | map(. | trim) | map(select(. != ""))),
+    labels: ($labels | select(. != null and . != "") | split(",") | map(. | gsub("^[ \t]+|[ \t]+$"; "")) | map(select(. != ""))),  # White spaces Trimming
     reviewers: ($reviewers | split(",") | map(select(. != ""))),
     stats: $stats,
     mergeable: $mergeable,
@@ -96,11 +102,14 @@ metadata=$(jq -n \
   }')
 
 echo "Metadata: $metadata"
+echo "PR_NUMBER: $PR_NUMBER"
 
 # Send metadata to the server
-curl -X POST "$BASE_APP_URL/github/store-data" \
+curl -v -X POST "$BASE_APP_URL/github/store-data" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d "$metadata" \
+  -d '{"prNumber": '"$PR_NUMBER"'}' \
   --connect-timeout 10 \
   --max-time 30 -v
+  

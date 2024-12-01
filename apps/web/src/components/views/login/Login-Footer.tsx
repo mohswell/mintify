@@ -16,7 +16,7 @@ export default function Footer() {
           </div>
 
         <span className="font-light md:text-sm text-xs dark:text-white !leading-[14px] tracking-[-2%] text-center">
-          {new Date().getFullYear()} © MINTIFY FACILITY
+          {new Date().getFullYear()} © BUNJY AI
         </span>
       </div>
     </div>

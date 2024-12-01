@@ -5,98 +5,36 @@ import {
   FileIcon,
   GitBranchIcon,
   SparklesIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  AlertCircleIcon,
+  User,
+  Loader
 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/views/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/views/ui/dialog';
-import { Badge } from '@/components/views/ui/badge';
-import { fetchAllPRFileAnalysis } from '@/actions';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/views/ui/dialog';
+import { fetchAllPRFileAnalysis, sendAICodeAnalysis } from '@/actions';
+import { FileAnalysis } from '@/types';
+import Image from 'next/image';
+import { parseDiff, getFileIcon } from '@/lib/utils';
+import { promptSuggestions } from '@/lib/helpers';
+import { Button } from '@/components/views/login/Button';
+import notification from '@/lib/notification';
 
-interface FileAnalysis {
-  id: string;
-  prNumber: number;
-  filePath: string;
-  additions: number;
-  deletions: number;
-  rawDiff: string;
-  fileType: string;
-  pullRequest: {
-    id: string;
-    title: string;
-    url: string;
-    author: string;
-    authorUsername?: string;
-    authorAvatar?: string;
-    createdAt: string;
-    status: string;
-  };
-}
-
-const parseDiff = (rawDiff: string) => {
-  const lines = rawDiff.split('\n').slice(2); // Remove custom header
-  const diffBlocks = [];
-  let currentBlock: any = null;
-
-  lines.forEach(line => {
-    if (line.startsWith('+++') || line.startsWith('---')) {
-      // File header lines, skip
-      return;
-    }
-
-    if (line.startsWith('@@')) {
-      // Start of a new hunk
-      if (currentBlock) {
-        diffBlocks.push(currentBlock);
-      }
-      currentBlock = {
-        header: line,
-        changes: []
-      };
-    } else if (currentBlock) {
-      // Diff lines
-      if (line.startsWith('+')) {
-        currentBlock.changes.push({
-          type: 'insert',
-          content: line.slice(1),
-        });
-      } else if (line.startsWith('-')) {
-        currentBlock.changes.push({
-          type: 'delete',
-          content: line.slice(1),
-        });
-      } else if (line.startsWith(' ')) {
-        currentBlock.changes.push({
-          type: 'normal',
-          content: line.slice(1),
-        });
-      }
-    }
-  });
-
-  // Add last block
-  if (currentBlock) {
-    diffBlocks.push(currentBlock);
-  }
-
-  return diffBlocks;
-};
-
-export default function HomePage() {
+export default function GitHubPRFileReview() {
   const [loading, setLoading] = useState(true);
   const [fileAnalyses, setFileAnalyses] = useState<FileAnalysis[]>([]);
   const [selectedFileId, setSelectedFileId] = useState<string>('');
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [aiPrompt, setAIPrompt] = useState('');
+  const [aiResponse, setAIResponse] = useState<string>('');
+  const [isAILoading, setIsAILoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  const [aiResponseHistory, setAiResponseHistory] = useState<string[]>([]);
 
   useEffect(() => {
+    setIsClient(true);
     const loadAnalyses = async () => {
       try {
+        notification({ type: "info", message: "Loading recents code changes from your Github repository..." });
         const { data, error } = await fetchAllPRFileAnalysis();
         if (data) {
           const processedAnalyses = data.map((analysis: { pullRequest: { authorUsername: any; author: any; authorAvatar: any }; }) => ({
@@ -114,6 +52,7 @@ export default function HomePage() {
         }
         setLoading(false);
       } catch (error) {
+        notification({ type: "error", message: "Failed to load file analyses:" });
         console.error('Failed to load file analyses:', error);
         setLoading(false);
       }
@@ -121,23 +60,77 @@ export default function HomePage() {
     loadAnalyses();
   }, []);
 
+  const handleAIAnalysis = async () => {
+    const selectedFile = fileAnalyses.find(file => file.id === selectedFileId);
+    if (!selectedFile) {
+      console.log("No selected file");
+      return;
+    }
+
+    setIsAILoading(true);
+
+    try {
+      const result = await sendAICodeAnalysis({
+        fileDiff: selectedFile.rawDiff,
+        prompt: aiPrompt,
+        filePath: selectedFile.filePath
+      });
+
+      if (result.ok && result.data) {
+        // Store the current response in history before setting new response
+        setAiResponseHistory(prev => [result.data.text, ...prev].slice(0, 5)); // Keep last 5 responses
+        setAIResponse(result.data.text);
+        notification({ type: "success", message: "AI analysis successful!" });
+      } else {
+        setAIResponse(result.error || 'An unexpected error occurred');
+      }
+    } catch (error) {
+      console.error('Failed to get AI analysis:', error);
+      setAIResponse('Sorry, there was an error processing your request.');
+    } finally {
+      setIsAILoading(false);
+    }
+  };
+
+  const clearAIResponse = () => {
+    setAIResponse('');
+    setAIPrompt('');
+  };
+
+  const retryAIAnalysis = () => {
+    // If there's a previous response in history, use its prompt
+    if (aiResponseHistory.length > 0) {
+      setAIPrompt(aiPrompt); // Reuse current prompt
+      handleAIAnalysis();
+    }
+  };
+
+  const handlePromptSuggestion = (suggestion: string) => {
+    // Set the prompt and optionally trigger analysis
+    setAIPrompt(prevPrompt =>
+      prevPrompt ? `${prevPrompt}\n${suggestion}` : suggestion
+    );
+  };
+
+
+
   const renderDiff = (rawDiff: string) => {
     const diffBlocks = parseDiff(rawDiff);
 
     return (
-      <div className="bg-white font-mono text-sm">
+      <div className="text-sm font-mono bg-gray-50 dark:bg-gray-900">
         {diffBlocks.map((block, blockIndex) => (
-          <div key={blockIndex} className="border-b last:border-b-0 border-gray-200">
-            <div className="bg-gray-50 text-gray-600 px-4 py-2">
+          <div key={blockIndex} className="border-b border-gray-200 dark:border-gray-700">
+            <div className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-white px-4 py-2">
               {block.header}
             </div>
             {block.changes.map((change: any, changeIndex: any) => (
               <div
                 key={changeIndex}
                 className={`px-4 py-1 whitespace-pre 
-                  ${change.type === 'insert' ? 'bg-green-50 text-green-800' :
-                    change.type === 'delete' ? 'bg-red-50 text-red-800' :
-                      'bg-white'}`}
+                  ${change.type === 'insert' ? 'bg-green-50 dark:bg-green-900 text-green-800 dark:text-green-200' :
+                    change.type === 'delete' ? 'bg-red-50 dark:bg-red-900 text-red-800 dark:text-red-200' :
+                      'bg-white dark:bg-gray-900'}`}
               >
                 {change.type === 'insert' ? '+' : change.type === 'delete' ? '-' : ' '}
                 {change.content}
@@ -152,30 +145,28 @@ export default function HomePage() {
   const selectedFile = fileAnalyses.find(file => file.id === selectedFileId);
 
   return (
-    <div className="flex min-h-screen dark:bg-dark bg-white text-black dark:text-white">
+    <div className="flex min-h-screen bg-white dark:bg-dark text-black dark:text-white overflow-x-hidden">
       {/* Sidebar */}
-      <div className="w-64 bg-gray-50 border-r p-4 overflow-y-auto dark:bg-dark bg-white text-black dark:text-white">
-        <div className="flex items-center mb-4">
-          <GitBranchIcon className="w-5 h-5 mr-2 text-gray-500" />
-          <h2 className="text-lg font-semibold">Pull Request Files</h2>
+      <div className="w-64 min-w-[16rem] bg-gray-50 dark:bg-dark border-r border-gray-200 dark:border-gray-800 p-3 overflow-y-auto">
+        <div className="flex items-center mb-3">
+          <GitBranchIcon className="w-4 h-4 mr-2 text-gray-500 dark:text-gray-400" />
+          <h2 className="text-sm font-semibold">Files Changed</h2>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1">
           {fileAnalyses.map((file) => (
             <div
               key={file.id}
               onClick={() => setSelectedFileId(file.id)}
-              className={`flex items-center p-2 rounded cursor-pointer hover:bg-gray-100 
-                ${selectedFileId === file.id ? 'bg-blue-50 text-blue-600' : ''}`}
+              className={`flex items-center p-2 rounded-md cursor-pointer text-sm
+                ${selectedFileId === file.id
+                  ? 'bg-blue-100 dark:bg-white text-gray-900 dark:text-grey-900'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             >
-              <FileIcon className="w-4 h-4 mr-2" />
+              <FileIcon className={`w-4 h-4 mr-2 ${getFileIcon(file.filePath)}`} />
               <span className="truncate flex-1">{file.filePath}</span>
-              <div className="flex space-x-1">
-                <Badge variant="outline" className="bg-green-50 text-green-700">
-                  +{file.additions}
-                </Badge>
-                <Badge variant="outline" className="bg-red-50 text-red-700">
-                  -{file.deletions}
-                </Badge>
+              <div className="flex space-x-1 ml-2">
+                <span className="text-green-600 dark:text-green-400 text-xs">+{file.additions}</span>
+                <span className="text-red-600 dark:text-red-400 text-xs">-{file.deletions}</span>
               </div>
             </div>
           ))}
@@ -183,45 +174,48 @@ export default function HomePage() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col dark:bg-dark bg-white text-black dark:text-white">
-        {selectedFile ? (
+      <div className="flex-1 flex flex-col">
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader className="animate-spin h-10 w-10 text-gray-500" /> {/* Loading animation */}
+          </div>
+        ) : selectedFile ? (
           <div className="flex-1">
             {/* File Header */}
-            <div className="bg-white border-b p-4 flex justify-between items-center">
+            <div className="bg-gray-50 dark:bg-dark border-b border-gray-200 dark:border-gray-800 p-3 flex justify-between items-center">
               <div className="flex items-center space-x-2">
-                <span className="text-gray-500">
-                  {selectedFile.pullRequest.title}
-                </span>
-                <ChevronRightIcon className="w-4 h-4 text-gray-500" />
-                <span>{selectedFile.filePath}</span>
+                <FileIcon className={`w-5 h-5 ${getFileIcon(selectedFile.filePath)}`} />
+                <span className="text-sm font-semibold">{selectedFile.filePath}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <SparklesIcon
                   onClick={() => setIsAIModalOpen(true)}
-                  className="text-purple-500 cursor-pointer hover:text-purple-700"
+                  className="w-5 h-5 text-purple-500 dark:text-purple-400 cursor-pointer hover:text-purple-700"
                 />
-                {selectedFile.pullRequest.authorAvatar ? ( // Ensure the image is only rendered if the source is available
-                  <img
+                {selectedFile?.pullRequest?.authorAvatar ? (
+                  <Image
                     src={selectedFile.pullRequest.authorAvatar}
-                    alt={selectedFile.pullRequest.author}
+                    alt={selectedFile.pullRequest.author || 'Author'}
                     className="w-6 h-6 rounded-full"
+                    width={32}
+                    height={32}
                   />
                 ) : (
-                  <div className="w-6 h-6 rounded-full bg-gray-300" /> // Placeholder if no avatar is available
+                  <User className="h-5 w-5" />
                 )}
               </div>
             </div>
 
             {/* Diff View */}
-            <div className="p-4 overflow-auto ">
+            <div className="overflow-auto">
               {renderDiff(selectedFile.rawDiff)}
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center bg-gray-50">
+          <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-dark">
             <div className="text-center">
-              <FileIcon className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-500">Select a file to view its diff</p>
+              <FileIcon className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-600 mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">Select a file to view its diff</p>
             </div>
           </div>
         )}
@@ -229,33 +223,120 @@ export default function HomePage() {
 
       {/* AI Modal */}
       <Dialog open={isAIModalOpen} onOpenChange={setIsAIModalOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent size="xl" className="h-[90vh] flex flex-col dark:bg-dark dark:text-white">
           <DialogHeader>
-            <DialogTitle>AI Code Analysis for {selectedFile?.filePath}</DialogTitle>
+            <DialogTitle>Bunjy AI Analysis</DialogTitle>
+            <DialogDescription>
+              Analyze the code changes for {selectedFile?.filePath}
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4">
-            <textarea
-              value={aiPrompt}
-              onChange={(e) => setAIPrompt(e.target.value)}
-              placeholder="Ask your AI assistant about this code..."
-              className="w-full min-h-[150px] border rounded-md p-3"
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                className="border rounded-md p-2 hover:bg-gray-50"
-                onClick={() => setIsAIModalOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="bg-blue-500 text-white rounded-md p-2 hover:bg-blue-600"
-                onClick={() => {
-                  // TODO: Implement AI API call
-                  console.log('Sending prompt:', aiPrompt);
-                }}
-              >
-                Send to AI
-              </button>
+
+          <div className="flex-1 grid grid-cols-2 gap-4 overflow-hidden">
+            {/* File Diff / AI Response Column */}
+            <div className="overflow-auto bg-gray-50 dark:bg-dark p-4 rounded-md relative">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-sm font-semibold">
+                  {aiResponse ? 'AI Analysis' : 'Code Changes'}
+                </h3>
+                {(aiResponse || selectedFile) && (
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => {
+                        // Toggle between code diff and AI response, but preserve both
+                        setAIResponse(prevResponse =>
+                          prevResponse === '' ? prevResponse : (prevResponse || '')
+                        );
+                      }}
+                      className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded"
+                    >
+                      {aiResponse ? 'Show Diff' : 'Show Analysis'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {isAILoading ? (
+                <div className="text-center text-gray-500">Analyzing...</div>
+              ) : (
+                <>
+                  {aiResponse ? (
+                    <pre
+                      className="whitespace-pre-wrap text-sm bg-[#1E1E1E] text-[#D4D4D4] p-3 rounded-md font-mono overflow-auto max-h-[70vh]"
+                      style={{
+                        fontFamily: 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace',
+                        tabSize: 2,
+                        hyphens: 'none',
+                        lineHeight: '1.5',
+                        backgroundColor: '#1E1E1E', // Dark background typical for code editors
+                        color: '#D4D4D4', // Light text color
+                      }}
+                    >
+                      {aiResponse}
+                    </pre>
+                  ) : (
+                    selectedFile && renderDiff(selectedFile.rawDiff)
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* AI Interaction Column */}
+            <div className="flex flex-col">
+              <textarea
+                value={aiPrompt}
+                onChange={(e) => setAIPrompt(e.target.value)}
+                placeholder="Provide additional context or ask specific questions about the code changes..."
+                className="w-full min-h-[150px] border rounded-md p-3 mb-4 dark:bg-dark-800 dark:border-gray-700 dark:text-white"
+              />
+
+              <div className="flex space-x-2 mb-4">
+                <Button
+                  onClick={handleAIAnalysis}
+                  disabled={isAILoading}
+                  className="w-full"
+                >
+                  {isAILoading ? (
+                    <Loader className="size-4 animate-spin" />
+                  ) : (
+                    "Get AI Analysis"
+                  )}
+                </Button>
+
+                {aiResponse && (
+                  <>
+                    <button
+                      onClick={clearAIResponse}
+                      className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white rounded-md px-3 py-2 text-sm"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={retryAIAnalysis}
+                      className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-md px-3 py-2 text-sm"
+                    >
+                      Retry
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Prompt Suggestions */}
+              <div className="mb-4">
+                <h4 className="text-xs font-semibold text-gray-600 dark:text-white mb-2">
+                  Quick Prompt Suggestions
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {promptSuggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handlePromptSuggestion(suggestion)}
+                      className="bg-gray-100 dark:bg-dark text-xs px-2 py-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </DialogContent>

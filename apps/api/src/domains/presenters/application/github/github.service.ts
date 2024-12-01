@@ -25,8 +25,34 @@ export class GithubService {
                 throw new Error('Pull Request number is required');
             }
 
-            const pullRequest = await this.prisma.pullRequest.create({
-                data: {
+            // Perform an upsert operation for the Pull Request
+            const pullRequest = await this.prisma.pullRequest.upsert({
+                where: { prNumber },
+                update: {
+                    title: prData.prTitle,
+                    description: prData.description || '',
+                    author: prData.prAuthor,
+                    authorUsername: prData.authorUsername || prData.prAuthor,
+                    authorAvatar: prData.authorAvatar || '',
+                    url: prData.prUrl,
+                    baseBranch: prData.baseBranch,
+                    headBranch: prData.headBranch,
+                    baseRepository: prData.baseRepository,
+                    headRepository: prData.headRepository,
+                    isDraft: prData.isDraft || false,
+                    labels: prData.labels || [],
+                    reviewers: prData.reviewers || [],
+                    comments: stats.comments || 0,
+                    additions: stats.additions || 0,
+                    deletions: stats.deletions || 0,
+                    changedFiles: stats.changedFiles || 0,
+                    mergeable: prData.mergeable ?? null,
+                    createdAt: new Date(prData.createdAt),
+                    updatedAt: prData.updatedAt ? new Date(prData.updatedAt) : new Date(),
+                    closedAt: prData.closedAt ? new Date(prData.closedAt) : null,
+                    mergedAt: prData.mergedAt ? new Date(prData.mergedAt) : null,
+                },
+                create: {
                     prNumber,
                     title: prData.prTitle,
                     description: prData.description || '',
@@ -47,20 +73,19 @@ export class GithubService {
                     changedFiles: stats.changedFiles || 0,
                     mergeable: prData.mergeable ?? null,
                     createdAt: new Date(prData.createdAt),
-                    updatedAt: prData.updatedAt ? new Date(prData.updatedAt) : undefined,
-                    closedAt: prData.closedAt ? new Date(prData.closedAt) : undefined,
-                    mergedAt: prData.mergedAt ? new Date(prData.mergedAt) : undefined,
+                    updatedAt: new Date(),
+                    closedAt: prData.closedAt ? new Date(prData.closedAt) : null,
+                    mergedAt: prData.mergedAt ? new Date(prData.mergedAt) : null,
                     userId,
                 },
             });
 
-            this.logger.log(`Pull Request created with ID: ${pullRequest.id}`);
+            this.logger.log(`Pull Request processed with ID: ${pullRequest.id}`);
 
             if (commits && commits.length > 0) {
                 this.logger.log(`Processing ${commits.length} commits`);
                 const commitPromises = commits.map(async (commit: CommitDTO) => {
                     try {
-                        // Validate the commit date
                         const validDate = commit.date && !isNaN(new Date(commit.date).getTime())
                             ? new Date(commit.date)
                             : null;
@@ -111,7 +136,6 @@ export class GithubService {
             throw error;
         }
     }
-
 
     async getPullRequestsForUser(userId: bigint): Promise<PullRequestResponseDTO[]> {
         return await this.prisma.execute(async (prisma) => {

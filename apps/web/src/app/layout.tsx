@@ -17,8 +17,8 @@ const fontSans = FontSans({
 });
 
 export const metadata: Metadata = {
-  title: "Orcish Fullstack Admin",
-  description: "Fullstack admin application in Next.js",
+  title: "Bunjy AI",
+  description: "AI application integrated to your github repository",
 };
 
 export default function RootLayout({
@@ -33,6 +33,7 @@ export default function RootLayout({
           "min-h-screen bg-background font-sans antialiased",
           fontSans.variable
         )}
+        suppressHydrationWarning
       >
         <ThemeProvider
           attribute="class"

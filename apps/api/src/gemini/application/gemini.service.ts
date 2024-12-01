@@ -82,6 +82,27 @@ export class GeminiService {
     });
   }
 
+  async generateCode(code: string): Promise<GenAiResponse> {
+    return this.withRetry(async () => {
+      const { totalTokens } = await this.proModel.countTokens(code);
+      this.logger.debug(`Token count for generation: ${totalTokens}`);
+
+      const result = await this.proModel.generateContent(code);
+      const response = await result.response;
+      const rawText = await response.text();
+
+      // Minimal formatting compared to analyzeCode
+      const simplifiedResponse = this.contentFormatter.simplifyResponse(rawText); // Assuming `simplifyResponse` is a lighter formatting method.
+      this.logger.debug('Content generation completed successfully');
+
+      return {
+        totalTokens,
+        text: simplifiedResponse,
+      };
+    });
+  }
+
+
   async generateTests(code: string): Promise<GenAiResponse> {
     return this.withRetry(async () => {
       const contents = this.testFormatter.createContent(code);

@@ -171,7 +171,7 @@ export default function LoginForm() {
           ) : (
             <>
               <IconBrandGithub className="mr-2 size-4" />
-              Login with GitHub
+              Continue with GitHub
             </>
           )}
         </GithubLoginButton>

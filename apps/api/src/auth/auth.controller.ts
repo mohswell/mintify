@@ -18,7 +18,7 @@ export class AuthController {
             const enrichedUserDto = {
                 isPremium: false,
                 isAdmin: false,
-                role: UserRole.User,
+                role: userDto.role ? userDto.role.toUpperCase() as UserRole : UserRole.USER,
                 ...userDto,
             };
             const user = await this.authService.signup(enrichedUserDto);

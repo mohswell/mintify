@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '~/factories';
 import * as bcrypt from 'bcrypt';
-import { GitHubLoginDto, UserDto } from '~dto';
+import { GitHubLoginDto, updateUserDto, UserDto } from '~dto';
 import { UserRole } from '@prisma/client';
 
 @Injectable()
@@ -33,12 +33,12 @@ export class UserProvider {
     if (!data.email || !data.password) {
       throw new BadRequestException('Email and password are required');
     }
-  
+
     const existingUser = await this.checkUserExists(data.email, data.username);
     if (existingUser) {
       throw new ConflictException('User with this email or username already exists');
     }
-  
+
     const hashedPassword = await bcrypt.hash(data.password, 12);
     return this.prisma.execute(async (prisma) =>
       prisma.user.create({
@@ -64,7 +64,7 @@ export class UserProvider {
       }),
     );
   }
-  
+
 
   /**
    * Validate the provided password against the stored hash
@@ -160,4 +160,70 @@ export class UserProvider {
       return { ...user, id: Number(user.id) };
     });
   }
+
+  async updateUser(userId: number, updateData: Partial<UserDto>) {
+    try {
+      if (!userId) {
+        throw new BadRequestException('User ID is required for update');
+      }
+      // Validate input
+      if (!Object.keys(updateData).length) {
+        throw new BadRequestException('No data provided for update');
+      }
+
+      // Fetch existing user data
+      const existingUser = await this.prisma.execute(async (prisma) =>
+        prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            username: true,
+            phone: true,
+            avatarUrl: true,
+            isPremium: true,
+            isActive: true,
+          },
+        })
+      );
+
+      if (!existingUser) {
+        throw new BadRequestException(`User with ID ${userId} not found`);
+      }
+
+      if (!existingUser.isActive) {
+        throw new BadRequestException(`Cannot update an inactive user`);
+      }
+
+
+      // Merge existing data with updates
+      const mergedData = { ...existingUser, ...updateData };
+
+      // Perform the update
+      const updatedUser = await this.prisma.execute(async (prisma) =>
+        prisma.user.update({
+          where: { id: userId },
+          data: mergedData,
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            username: true,
+            phone: true,
+            avatarUrl: true,
+            isPremium: true,
+          },
+        })
+      );
+
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating user:', (error as any).message || error);
+      throw new BadRequestException('Failed to update user');
+    }
+  }
+
 }

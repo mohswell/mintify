@@ -18,19 +18,21 @@ import {
 import { signup } from "@/actions";
 import { useState } from "react";
 import { Loader } from "lucide-react";
+import { useRouter } from "next/navigation";
+import notification from "@/lib/notification";
 
 const formSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required" }).max(50),
   lastName: z.string().min(1, { message: "Last name is required" }).max(50),
   email: z.string().email({ message: "Invalid email address" }),
   username: z.string().min(2, { message: "Username must be at least 2 characters" }).max(50),
-  password: z.string().min(8, { message: "Password must be at least 8 characters" }).max(50),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }).max(50),
 });
-
 
 
 export default function SignupForm() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -45,9 +47,30 @@ export default function SignupForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    await signup(values);
-    form.reset();
-    setIsLoading(false);
+
+    try {
+      const { ok, data } = await signup(values); 
+
+      if (!ok) {
+        setIsLoading(false);
+        notification({ type: "error", message: "Signup failed. Notify the owner if you think this is a mistake!" });
+        return;
+      }
+
+      notification({ message: "Signup successful! Redirecting to login..." });
+
+      // Delay redirection to the login page
+      setTimeout(() => {
+        router.push("/");
+      }, 1000); 
+
+      form.reset();
+    } catch (error: any) {
+      notification({ type: "error", message: "Signup failed!" });
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -129,20 +152,18 @@ export default function SignupForm() {
               )}
             />
           </div>
-          <Button type="submit" className="w-full">
-            Create an account
-          </Button>
-          <Button variant="outline" className="w-full" disabled={isLoading}>
+          <Button className="w-full" disabled={isLoading} type="submit">
             {isLoading ? (
               <Loader className="size-4 animate-spin" />
             ) : (
-              "Sign up with GitHub"
+              "Create an account"
             )}
+
           </Button>
         </div>
         <div className="mt-4 text-center text-sm">
           Already have an account?{" "}
-          <Link href="#" className="underline">
+          <Link href="/" className="underline">
             Sign in
           </Link>
         </div>

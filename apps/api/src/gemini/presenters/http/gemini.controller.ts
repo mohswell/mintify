@@ -114,6 +114,16 @@ export class GeminiController {
   }
 
   @ApiBody({
+    description: 'Generate code',
+    required: true,
+    type: String,
+  })
+  @Post('generate-code')
+  async generateAnalysis(@Body() body: { code: string }): Promise<GenAiResponse> {
+    return this.service.generateCode(body.code);
+  }
+
+  @ApiBody({
     description: 'Generate tests',
     required: true,
     type: String,

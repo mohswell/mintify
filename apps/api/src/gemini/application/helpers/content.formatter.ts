@@ -6,14 +6,12 @@ export class ContentFormatterService {
   private readonly logger = new Logger(ContentFormatterService.name);
 
   createContent(text: string, ...images: Express.Multer.File[]): Content[] {
-    const imageParts: Part[] = images.map((image) => {
-      return {
-        inlineData: {
-          mimeType: image.mimetype,
-          data: image.buffer.toString('base64'),
-        },
-      };
-    });
+    const imageParts: Part[] = images.map((image) => ({
+      inlineData: {
+        mimeType: image.mimetype,
+        data: image.buffer.toString('base64'),
+      },
+    }));
 
     return [
       {
@@ -21,98 +19,144 @@ export class ContentFormatterService {
         parts: [
           ...imageParts,
           {
-            text: this.formatAnalysisPrompt(text),
+            text: this.formatCodeReviewPrompt(text),
           },
         ],
       },
     ];
   }
 
-  private formatAnalysisPrompt(code: string): string {
-    // Extract code from markdown if present
-    const codeContent = this.extractCodeFromMarkdown(code);
-    
-    return `As an expert code reviewer, please analyze the following code changes and provide a detailed review:
+  private formatCodeReviewPrompt(text: string): string {
+    const codeChanges = this.extractCodeChanges(text);
+
+    return `Review the following code changes thoroughly and provide an analysis adhering to the guidelines below if applicable else skip the section not relevant to the code changes.:
+1. Code structure and architecture
+2. Potential refactoring opportunities
+3. Performance and efficiency
+4. Security vulnerabilities
+5. Dependency and import management
 
 CHANGES TO ANALYZE:
-${codeContent}
+${codeChanges}
 
-Please provide your analysis in the following format:
+REVIEW GUIDELINES:
+- Prioritize code changes over lengthy explanations
+- Focus on actionable improvements
+- Identify potential risks and optimization opportunities
+- Suggest specific refactoring strategies
 
-## Summary of Changes
-[Provide a brief overview of the main changes]
+ANALYSIS FORMAT:
+## Key Changes
+- Brief overview of main modifications
 
-## Potential Issues
-- [List any potential bugs, security concerns, or performance issues]
-- [Include severity level for each issue]
+## Code Structure Analysis
+- Architectural observations
+- Refactoring recommendations
 
-## Improvement Suggestions
-- [Provide specific recommendations for improvement]
-- [Include code examples where relevant]
+## Performance Insights
+- Efficiency improvements
+- Bottlenecks to address
 
-## Best Practices
-- [Highlight areas where best practices could be applied]
-- [Suggest specific improvements]
+## Security Checkpoint
+- Security concerns
+- Risk mitigation strategies
 
-## Security Considerations
-- [Identify any security implications]
-- [Provide security-focused recommendations]
+## Dependency Review
+- Import and package management
+- Optimization suggestions
 
-Please be specific and provide examples where possible.`;
+Provide a concise and actionable review while considering how the changes impact the existing application.`;
   }
 
-  private extractCodeFromMarkdown(text: string): string {
+  private extractCodeChanges(text: string): string {
     try {
-      // Check if the text contains a markdown diff block
-      const diffRegex = /```diff\n([\s\S]*?)```/g;
-      const matches = [...text.matchAll(diffRegex)];
+      // Enhanced extraction with multiple strategies
+      const extractionStrategies = [
+        // Diff block extraction (most preferred)
+        () => {
+          const diffRegex = /```diff\n([\s\S]*?)```/g;
+          const matches = [...text.matchAll(diffRegex)];
+          return matches.length > 0
+            ? matches.map(match =>
+              match[1].split('\n')
+                .filter(line => line.startsWith('+') || line.startsWith('-'))
+                .map(line => line.startsWith('+')
+                  ? `[ADDED] ${line.substring(1).trim()}`
+                  : `[REMOVED] ${line.substring(1).trim()}`)
+                .join('\n')
+            ).join('\n\n')
+            : null;
+        },
 
-      if (matches.length > 0) {
-        // Extract and format all diff blocks
-        return matches
-          .map(match => {
-            const diffContent = match[1].trim();
-            // Add some context about added/removed lines
-            return diffContent.split('\n')
-              .map(line => {
-                if (line.startsWith('+')) return `ADDED: ${line.substring(1)}`;
-                if (line.startsWith('-')) return `REMOVED: ${line.substring(1)}`;
-                return line;
-              })
-              .join('\n');
-          })
-          .join('\n\n=== Next File ===\n\n');
+        // Code block extraction (fallback)
+        () => {
+          const codeRegex = /```[\w]*\n([\s\S]*?)```/g;
+          const matches = [...text.matchAll(codeRegex)];
+          return matches.length > 0
+            ? matches.map(match => match[1].trim()).join('\n\n=== Next Block ===\n\n')
+            : null;
+        },
+
+        // Plain text fallback
+        () => text.trim()
+      ];
+
+      for (const strategy of extractionStrategies) {
+        const result = strategy();
+        if (result) return result;
       }
 
-      // Check for regular code blocks
-      const codeRegex = /```[\w]*\n([\s\S]*?)```/g;
-      const codeMatches = [...text.matchAll(codeRegex)];
-      
-      if (codeMatches.length > 0) {
-        return codeMatches
-          .map(match => match[1].trim())
-          .join('\n\n=== Next Block ===\n\n');
-      }
-
-      // If no markdown formatting found, return the original text
-      return text;
-    } catch (error) {
-      this.logger.error('Error extracting code from markdown:', error);
-      return text;
+      return 'No extractable code changes found.';
+    } catch (error: any) {
+      this.logger.error('Code extraction error:', error);
+      return `Extraction failed: ${error.message}`;
     }
   }
 
   formatResponse(analysisText: string): string {
     try {
-      return `# Code Review Analysis
+      return `# Focused Code Review Analysis
 
 ${analysisText}
 
 ---
-*Analysis generated by AI Code Review*`;
+*AI-Powered Code Review*`;
     } catch (error) {
-      this.logger.error('Error formatting response:', error);
+      this.logger.error('Response formatting error:', error);
       return analysisText;
     }
   }
+
+  // New method to validate and suggest import/package improvements
+  validateImportStructure(imports: string[]): string[] {
+    const suggestions: string[] = [];
+
+    // Check for unused imports
+    const unusedImports = imports.filter(imp =>
+      !imp.includes('used') && !imp.includes('required')
+    );
+    if (unusedImports.length > 0) {
+      suggestions.push('Remove unused imports to improve code cleanliness');
+    }
+
+    // Suggest import organization
+    const importGroups = {
+      external: imports.filter(imp => imp.includes('from') && !imp.includes('./') && !imp.includes('../')),
+      internal: imports.filter(imp => imp.includes('./') || imp.includes('../')),
+      typings: imports.filter(imp => imp.includes('type') || imp.includes('interface'))
+    };
+
+    // Suggest import sorting and grouping
+    if (importGroups.external.length > 0) {
+      suggestions.push('Consider organizing imports: external, internal, and type imports');
+    }
+
+    return suggestions;
+  }
+
+  simplifyResponse(responseText: string): string {
+    // Perform only necessary processing, e.g., trimming, removing boilerplate, etc.
+    return responseText.trim();
+  }
+
 }
