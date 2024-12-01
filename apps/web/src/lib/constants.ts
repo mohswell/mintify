@@ -25,6 +25,6 @@ export const PR_STATUS_SYMBOLS: Record<PullRequestStatus, string> = {
   closed: "❌",
 };
 
-export const SESSION_NAME = "mintify-session";
+export const SESSION_NAME = "bunjy-session";
 
 export const AUTH_PROVIDER = "Github";
