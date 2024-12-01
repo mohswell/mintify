@@ -126,7 +126,7 @@ GITHUB_SECRET=""
 NEXT_PUBLIC_API_BASE_URL="http://localhost:8000/api/v1"
 ```
 
-#### For the Frontend go to `api` and create a `.env` Example:
+#### For the Backend go to `api` and create a `.env` Example:
 ```env
 GEMINI_API_KEY=""
 GEMINI_PRO_MODEL="gemini-pro"
