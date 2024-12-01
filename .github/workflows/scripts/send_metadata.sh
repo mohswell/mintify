@@ -84,7 +84,7 @@ metadata=$(jq -n \
     baseRepository: $base_repository,
     headRepository: $head_repository,
     isDraft: ($draft == "true"),
-    labels: ($labels | select(. != null and . != "") | split(",") | map(. | trim) | map(select(. != ""))),
+    labels: ($labels | select(. != null and . != "") | split(",") | map(. | gsub("^[ \t]+|[ \t]+$"; "")) | map(select(. != ""))),  # White spaces Trimming
     reviewers: ($reviewers | split(",") | map(select(. != ""))),
     stats: $stats,
     mergeable: $mergeable,
