@@ -1,11 +1,32 @@
-# AI-Integrated Code Pipeline  
+# AI-Integrated Code Pipeline 
 
-Welcome to the **AI-Powered GitHub Code Application**, a powerful tool designed to leverage AI capabilities for analyzing pull requests, commits, and repository data. This monorepo uses [Turborepo](https://turbo.build/repo) for an efficient and scalable monolithic development.
+This is an innovative AI-powered analysis tool designed to enhance code review and pull request management using cutting-edge AI technologies.
 
-### Installing the turbo CLI
+## How It Works: Technical Architecture
 
-```bash
-npm install turbo --save-dev
+### 1. Authentication and Integration
+- Users setup the action in their workflows.
+- The action requires a `base_app_url` and `api_key` defined in your respository secrets.
+- You'll visit the dashboard page at [Bunjy AI](https://bunjy.vercel.app) to generate an `api_key` and copy the `base_app_url`.
+- Users can log in using GitHub OAuth to authorize my core service.
+- The application connects directly to GitHub repositories via the action workflow.
+- Securely retrieves repository and pull request data
+- Displays AI reviews for your code changes directly within the PR opened, or in the dahboard [homepage](https://bunjy.vercel.app/home).
+
+### 2. AI Analysis Process
+1. When a pull request is opened, the app:
+   - Captures code changes
+   - Analyzes commit messages
+   - Processes repository context
+   - Runs AI models (Gemini Nano) to evaluate:
+     - Code quality
+     - Potential risks
+     - Improvement suggestions
+     - Reviewer recommendations
+
+### 3. Data Flow
+```
+GitHub PR → Core API Service → Gemini AI → Analysis Results → Supabase DB → Web Interface
 ```
 
 ---
@@ -18,35 +39,51 @@ This application provides intelligent insights into GitHub pull requests by anal
 - PR risk assessments based on AI analysis.
 - Reviewer suggestions and code quality highlights.
 
-## 📂 Monorepo Structure
+## 🔑 API Keys
 
-This repository follows a monorepo architecture to manage multiple projects and shared resources efficiently:
+To use this AI app, you will need to obtain an API keys to authorize the middleware server. Here are the steps to get your API keys:
+
+**Bunjy AI API Key**: 
+   - Go to [Bunjy AI app](https://bunjy.vercel.app).
+   - On the login page, select continue with github for seamless repository setup.
+   - On the homepage, click on access tokens and generate a new API Key variable.
+   - Copy the generated token and add it to your environment secrets.
+
+## 🌐 Base App URL
+
+The base URL to use the application to be added in a github action is:
+
+```
+https://mintify-production.up.railway.app/api/v1
+```
+
+I will soon find a way to use the action without the URL specified, making it more flexible and easier to configure.
 
 ### Apps and Packages
 
 - **`web`**: The main user-facing [Next.js](https://nextjs.org/) application for viewing and managing pull request analyses.
-- **`api`**: The backend service powered by [Prisma](https://www.prisma.io/) and [Nest.js](https://nestjs.com/) for interacting with the database and integrating AI services like Gemini.
-- **`@repo/ui`**: A shared React component library for consistent UI across applications.
-- **`@repo/eslint-config`**: Shared `eslint` configuration (including Next.js and Prettier rules).
-- **`@repo/typescript-config`**: Centralized `tsconfig.json` files for consistent TypeScript configuration.
+- **`api`**: The backend core service powered by [Prisma](https://www.prisma.io/) and [Nest.js](https://nestjs.com/) for interacting with the database and integrating AI services like Gemini.
+- **`workflows/scripts`**: This repository includes various shell scripts to automate different tasks:
+
+1. Analyzes files in the repository to gather insights and metrics.
+2. Sets up the necessary environment variables required for the application.
+3. Sends metadata to the server for further processing and analysis.
+4. Processes comments in pull requests to provide feedback and suggestions.
+
 
 ## 🌟 Features
 
 - **AI Analysis**: Uses Google Gemini Nano AI models (`gemini-pro`, `gemini-pro-vision`) to analyze pull requests and commits.
-- **Supabase Integration**: Manages user sessions and stores metadata.
+- **Supabase Integration**: Manages user repositories, sessions and stores metadata.
 - **GitHub OAuth**: Secure GitHub login for seamless access to repository data.
 - **Efficient Monorepo Setup**: Built with Turborepo for shared tooling and caching.
 
----
+## Future Roadmap
 
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 16.x or later.
-- A running PostgreSQL database.
-- Supabase account for backend storage.
-- Google Gemini API access.
-- A `.env` file for environment-specific variables.
+- Enhanced AI models
+- More granular code analysis
+- Machine learning improvements
+- Extended language support
 
 ---
 
@@ -58,6 +95,10 @@ Clone the repository and install dependencies:
 git clone https://github.com/mohswell/mintify.git
 cd mintify
 npm install
+```
+
+```bash
+npm install turbo --save-dev
 ```
 
 ---
@@ -127,50 +168,22 @@ turbo run build
 
 ---
 
-## 🧩 Remote Caching with Turborepo
-
-Turborepo supports [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching) for faster builds. To enable:
-
-1. Login to your Vercel account:
-   ```bash
-   npx turbo login
-   ```
-
-2. Link your Turborepo to a Remote Cache:
-   ```bash
-   npx turbo link
-   ```
-
----
-
-## 🛡️ GitHub Actions
-
-The project includes CI workflows to streamline development and deployment. Example snippets include:
-
-```bash
-# Setting up AI in a CI/CD pipleline in GitHub Actions
-- uses: mohswell/ai@v1
-  with:
-    base_app_url: ${{ secrets.BASE_APP_URL }}
-    api_key: ${{ secrets.API_KEY }}
-```
-
----
-
-## Tools and Utilities
-
-- **TypeScript**: For shared static typing across the monolithic codebase.
-- **ESLint and Prettier**: For linting and consistent formatting.
-- **Husky and Lint-Staged**: For pre-commit hooks and staged file linting.
-- **Commitizen**: For generating conventional commit messages.
-
----
-
 ## License
 
 The repository is licensed under GNU GENERAL PUBLIC LICENSE, ensuring proper attribution and restricted commercial use. See the `LICENSE` file for details.
 
 ---
+
+## ☕ Buy Me a Coffee
+
+If you find this project helpful and would like to support its development, consider buying me a coffee:
+
+[![Buy Me a Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/mohswell)
+
+Your support is greatly appreciated!
+
+---
+
 
 ## Contributing
 
