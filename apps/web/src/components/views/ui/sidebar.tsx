@@ -9,11 +9,11 @@ import {
   Bell,
   Home,
   BarChart,
-  Package,
+  GitCommit,
   GitPullRequest,
   ShoppingCart,
   User,
-  Key,
+  Key
 } from "lucide-react";
 import { Button } from "./button";
 import {
@@ -36,9 +36,9 @@ export const navItems = [
     icon: <GitPullRequest className="h-5 w-5" />,
   },
   {
-    label: "Code Changes",
+    label: "Commits",
     href: "/home/usage",
-    icon: <Package className="h-5 w-5" />,
+    icon: <GitCommit className="h-5 w-5" />,
   },
   // {
   //   label: "Access Token",
