@@ -21,3 +21,17 @@ export const formatDate = (dateString: string) => {
     day: 'numeric'
   });
 };
+
+export const promptSuggestions = [
+  "Explain this code",
+  "Refactor for better performance",
+  "Add comments and documentation",
+  "Convert to TypeScript",
+  "Use type interfaces for safety if applicable",
+  "Generate unit tests",
+  "Optimize for maintainability",
+  "Provide examples of usage",
+  "Suggest improvements for scalability",
+  "Identify potential bugs or issues",
+  "Provide alternative solutions or approaches"
+];
