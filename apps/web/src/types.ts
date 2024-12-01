@@ -84,3 +84,64 @@ export interface GitHubUser {
   email: string;
   avatarUrl: string;
 }
+
+export interface GenAiTokenUsage {
+  totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export interface GenAiResponse {
+  text: string;
+  tokenUsage: GenAiTokenUsage;
+}
+
+export interface ApiResponse<T> {
+  ok: boolean;
+  data?: T;
+  error?: string;
+}
+
+export interface FileAnalysis {
+  id: string;
+  prNumber: number;
+  filePath: string;
+  additions: number;
+  deletions: number;
+  rawDiff: string;
+  fileType: string;
+  pullRequest: {
+    id: string;
+    title: string;
+    url: string;
+    author: string;
+    authorUsername?: string;
+    authorAvatar?: string;
+    createdAt: string;
+    status: string;
+  };
+}
+
+export interface FileDiffProps {
+  rawDiff: string;
+}
+
+export interface Change {
+  type: 'insert' | 'delete' | 'normal';
+  content: string;
+}
+
+export interface DiffBlock {
+  header: string;
+  changes: Change[];
+}
+
+export interface AIDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  aiResponse: string;
+  aiPrompt: string;
+  setAIPrompt: (prompt: string) => void;
+  handleAIAnalysis: () => void;
+  isAILoading: boolean;
+}
