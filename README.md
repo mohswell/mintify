@@ -193,6 +193,6 @@ Contributions are welcome! Please fork the repo and create a pull request with y
 
 ## Contact
 
-If you have questions or suggestions, feel free to [open an issue](https://github.com/mohswell/mintify/issues) or contact me directly at [mohammedabdy10@gmail.com].
+If you have questions or suggestions, feel free to [open an issue](https://github.com/mohswell/mintify/issues) or contact me directly at [Muhammad.Said](mailto:mohammedabdy10@gmail.com).
 
 ---
