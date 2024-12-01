@@ -2,6 +2,7 @@ import { API_URL } from "@/lib/env";
 import { useAuthStore } from "@/stores/auth";
 import { GitHubUser, LoginDetails, SignupDetails, Token } from "@/types";
 import axios from "axios";
+import { AuthUser } from "./auth/factories/authInterface";
 
 export const login = async (details: LoginDetails) => {
   const res = await fetch(`${API_URL}/auth/login`, {
@@ -251,4 +252,33 @@ export const getApiKeyUsageStats = async () => {
       error: error instanceof Error ? error.message : "Unknown error"
     };
   }
+};
+
+export const updateUserDetails = async (updatedUserDetails: Partial<AuthUser>) => {
+  const user = useAuthStore.getState().user;
+  const token = useAuthStore.getState().token;
+
+  if (!user?.id) {
+    throw new Error("User not authenticated");
+  }
+
+  const res = await fetch(`${API_URL}/user/update`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ ...updatedUserDetails }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to update user details");
+  }
+
+  // Update local user state
+  useAuthStore.setState({ user: { ...user, ...updatedUserDetails } });
+
+  return { ok: res.ok, data };
 };
