@@ -1,21 +1,24 @@
 import { BaseController } from '~decorators/version.decorator';
 import { Body, Post, Get, HttpException, HttpStatus, Request } from '@nestjs/common';
 import { ApiKeyService } from './api.service';
+import { ConfigService } from '@nestjs/config';
 // import { SkipThrottle, Throttle } from '@nestjs/throttler';
 
 @BaseController('access-token')
 export class ApiController {
     constructor(
         private readonly apiKeyService: ApiKeyService,
+        private readonly configService: ConfigService
     ) { }
 
     // @Throttle('short') // Applies the short throttler I defined in app.module.ts
     @Post('generate')
     async generateToken(@Body() body: { userId: bigint }) {
         try {
-            const userId = BigInt(body.userId); // Ensure bigint type
+            const userId = BigInt(body.userId);
             const apiKey = await this.apiKeyService.generateApiKey(userId);
-            return { message: 'API key generated successfully', apiKey };
+            const baseAppUrl = this.configService.get<string>('BASE_APP_URL');
+            return { message: 'API key generated successfully', apiKey, baseAppUrl };
         } catch (error) {
             console.error('Error generating API key:', error);
             throw new HttpException(
