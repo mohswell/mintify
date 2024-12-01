@@ -73,18 +73,37 @@ jobs:
 
       - name: Set PR Environment Variables
         run: |
-          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          # Ensure PR number is always set
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          if [ -z "$PR_NUMBER" ]; then
+            echo "Error: PR Number is empty"
+            exit 1
+          fi
+          
+          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
           echo "PR_TITLE=${{ github.event.pull_request.title }}" >> $GITHUB_ENV
           echo "PR_AUTHOR=${{ github.event.pull_request.user.login }}" >> $GITHUB_ENV
           echo "PR_URL=${{ github.event.pull_request.html_url }}" >> $GITHUB_ENV
           echo "BASE_BRANCH=${{ github.event.pull_request.base.ref }}" >> $GITHUB_ENV
           echo "HEAD_BRANCH=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
 
+      - name: Debug PR_NUMBER
+        run: |
+          echo "PR_NUMBER: $PR_NUMBER"
+
       - name: Fetch PR Details
         env: 
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Fetch PR details, ensuring mandatory fields
           pr_details=$(gh api repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER})
+          
+          # Ensure PR details are retrieved
+          if [ -z "$pr_details" ]; then
+            echo "Error: Unable to fetch PR details"
+            exit 1
+          fi
+          
           echo "PR_DRAFT=$(echo $pr_details | jq -r .draft)" >> $GITHUB_ENV
           echo "PR_LABELS=$(echo $pr_details | jq -r '.labels | map(.name) | join(",")')" >> $GITHUB_ENV
           echo "PR_REVIEWERS=$(echo $pr_details | jq -r '.requested_reviewers | map(.login) | join(",")')" >> $GITHUB_ENV
@@ -92,7 +111,7 @@ jobs:
           echo "PR_DELETIONS=$(echo $pr_details | jq -r .deletions)" >> $GITHUB_ENV
           echo "PR_CHANGED_FILES=$(echo $pr_details | jq -r .changed_files)" >> $GITHUB_ENV
           echo "PR_MERGEABLE=$(echo $pr_details | jq -r .mergeable)" >> $GITHUB_ENV
-          echo "PR_DESCRIPTION=$(echo $pr_details | jq -r .body)" >> $GITHUB_ENV
+          echo "PR_DESCRIPTION=$(echo $pr_details | jq -R .body)" >> $GITHUB_ENV
           echo "PR_AUTHOR_USERNAME=$(echo $pr_details | jq -r .user.login)" >> $GITHUB_ENV
           echo "PR_AUTHOR_AVATAR=$(echo $pr_details | jq -r .user.avatar_url)" >> $GITHUB_ENV
           echo "PR_BASE_REPO=$(echo $pr_details | jq -r .base.repo.full_name)" >> $GITHUB_ENV
@@ -102,10 +121,17 @@ jobs:
           echo "PR_UPDATED_AT=$(echo $pr_details | jq -r .updated_at)" >> $GITHUB_ENV
           echo "PR_CLOSED_AT=$(echo $pr_details | jq -r .closed_at)" >> $GITHUB_ENV
           echo "PR_MERGED_AT=$(echo $pr_details | jq -r .merged_at)" >> $GITHUB_ENV
+      
+      - name: Debug PR_NUMBER
+        run: |
+          echo "PR_NUMBER: $PR_NUMBER"
   
       - name: Save Pull Request Metadata and user information to server
         run: |
-          # Ensure all required environment variables are set
+          # Ensure all required environment variables are set and not empty
+          [[ -z "$PR_NUMBER" ]] && { echo "PR_NUMBER is empty"; exit 1; }
+          
+          # Set defaults more strictly
           export PR_DRAFT="${PR_DRAFT:-false}"
           export PR_LABELS="${PR_LABELS:-}"
           export PR_REVIEWERS="${PR_REVIEWERS:-}"
@@ -137,6 +163,10 @@ jobs:
           GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           LAST_ANALYZED_COMMIT: ${{ env.LAST_ANALYZED_COMMIT }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+
+      - name: Debug PR_NUMBER
+        run: |
+          echo "PR_NUMBER: $PR_NUMBER"
 
       - name: Save analysis data
         if: github.event_name != 'issue_comment'

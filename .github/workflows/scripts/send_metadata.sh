@@ -7,6 +7,12 @@ if [[ "$COMMIT_HISTORY" == "Unable to fetch commit history." || -z "$COMMIT_HIST
   exit 1
 fi
 
+# Validate PR number explicitly
+if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
+  echo "Error: PR_NUMBER is missing or invalid"
+  exit 1
+fi
+
 echo "Sending metadata to server..."
 
 IFS=$'\n'
