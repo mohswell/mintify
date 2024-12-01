@@ -1,5 +1,3 @@
----
-
 # AI-Integrated Code Pipeline  
 
 Welcome to the **AI-Powered GitHub Code Application**, a powerful tool designed to leverage AI capabilities for analyzing pull requests, commits, and repository data. This monorepo uses [Turborepo](https://turbo.build/repo) for an efficient and scalable monolithic development.
