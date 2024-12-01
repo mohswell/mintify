@@ -17,6 +17,8 @@ import { HealthController } from '~log/health/health.controller';
 import { RequestLoggerMiddleware } from '~middleware/extensions/logger.middleware';
 import { TerminusModule } from '@nestjs/terminus';
 import { ContentTypeMiddleware } from '~middleware/content/content.middleware';
+import { UserController } from '~log/user/user.controller';
+import { UserProvider } from '~auth/providers/suppliers/user.provider';
 
 @Module({
   imports: [
@@ -55,9 +57,10 @@ import { ContentTypeMiddleware } from '~middleware/content/content.middleware';
     ApiModule,
     GithubModule,
   ],
-  controllers: [AppController, HealthController],
+  controllers: [AppController, HealthController, UserController],
   providers: [
     AppService,
+    UserProvider,
     {
       provide: APP_GUARD,
       useClass: RouteGuard,
@@ -76,11 +79,10 @@ export class AppModule implements NestModule {
       .apply(RequestLoggerMiddleware)
       .forRoutes('*');
 
-    consumer
-      .apply(ContentTypeMiddleware)
-      .exclude('/')
-      .forRoutes({ path: '*', method: RequestMethod.POST });
-
+    // consumer
+    //   .apply(ContentTypeMiddleware)
+    //   .exclude('/')
+    //   .forRoutes({ path: '*', method: RequestMethod.POST });
 
     consumer
       .apply(JwtMiddleware)
