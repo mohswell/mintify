@@ -1,5 +1,5 @@
 name: 'Bunjy-AI'
-description: 'Integate AI to your code repository with an action powered by Gemini Nano'
+description: 'Integrate AI into your code repository with an action powered by Gemini Nano'
 author: 'mohswell'
 branding:
   icon: 'activity'
@@ -16,15 +16,18 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Analyze PR
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.TOKEN }}
+ 
+    - name: Checkout workflow code
+      uses: actions/checkout@v4
+      with:
+        repository: mohswell/mintify
+        token: ${{ secrets.TOKEN }}
+        path: 'reusable-actions'
+
+    - name: Run the AI job
       shell: bash
-      run: .github/workflows/scripts/analyze_files.sh
-    - name: Send Metadata
-      shell: bash
-      run: .github/workflows/scripts/send_metadata.sh
-    - name: Post Comment
-      shell: bash
-      run: .github/workflows/scripts/post_comment.sh
-    - name: Process Feedback
-      shell: bash
-      run: .github/workflows/scripts/process_feedback.sh
+      run: .github/workflows/ai.yml
