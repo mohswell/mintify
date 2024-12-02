@@ -43,13 +43,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Bunjy AI Analysis
-        uses: mohswell/mintify@v1.0.1
+      - name: Bunjy-AI              
+        uses: mohswell/mintify@v1.1.4
         with:
           BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
           API_KEY: ${{ secrets.API_KEY }}
+          TOKEN: ${{ secrets.TOKEN }}
 ```
 
 ## How It Works: Technical Architecture
