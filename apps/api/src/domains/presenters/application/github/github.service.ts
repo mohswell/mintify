@@ -132,6 +132,7 @@ export class GithubService {
 
             return pullRequest;
         } catch (error) {
+            this.logger.error(`Detailed error storing PR data: ${JSON.stringify(error, null, 2)}`);
             this.logger.error(`Error storing Pull Request data: ${(error as any).message}`, (error as any).stack);
             throw error;
         }

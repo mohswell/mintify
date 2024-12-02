@@ -62,7 +62,8 @@ export class GeminiService {
     });
   }
 
-  async analyzeCode(code: string): Promise<GenAiResponse> {
+  // TODO: Implement the analyzeCode method TO return the GenAIResponse Type
+  async analyzeCode(code: string): Promise<any> {
     return this.withRetry(async () => {
       const contents = this.contentFormatter.createContent(code);
       const { totalTokens } = await this.proModel.countTokens({ contents });
@@ -76,8 +77,8 @@ export class GeminiService {
       this.logger.debug('Analysis completed successfully');
 
       return {
-        totalTokens,
-        text: formattedResponse,
+        //totalTokens,
+        formattedResponse
       };
     });
   }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { GithubController } from '~domains/presenters/github/github.controller';
 import { GithubService } from '~domains/presenters/application/github/github.service';
 import { githubProviders } from '~domains/presenters/application/providers/github.provider';
@@ -9,6 +9,6 @@ import { FileProvider } from '~domains/presenters/application/providers/file.pro
 @Module({
     imports: [],
     controllers: [GithubController],
-    providers: [GithubService, ...githubProviders, PrismaService, FileAnalysisService, FileProvider],
+    providers: [GithubService, ...githubProviders, PrismaService, FileAnalysisService, FileProvider, Logger],
 })
 export class GithubModule { }  

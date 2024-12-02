@@ -30,8 +30,8 @@ import { UserProvider } from '~auth/providers/suppliers/user.provider';
       ttl: 300000, // Default cache TTL (5 minutes)
     }),
     ThrottlerModule.forRoot([{
-      ttl: 10000, // 3 requests in 10 seconds
-      limit: 3,
+      ttl: 10000, // 5 requests in 10 seconds
+      limit: 5,
     }]),
     // ThrottlerModule.forRoot([
     //   {

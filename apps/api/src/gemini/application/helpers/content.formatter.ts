@@ -65,6 +65,9 @@ ANALYSIS FORMAT:
 - Import and package management
 - Optimization suggestions
 
+## Unit tests
+- If applicable, suggest unit tests for the changes made for the language used.
+
 Provide a concise and actionable review while considering how the changes impact the existing application.`;
   }
 
@@ -115,12 +118,11 @@ Provide a concise and actionable review while considering how the changes impact
 
   formatResponse(analysisText: string): string {
     try {
-      return `# Focused Code Review Analysis
+      return `
 
 ${analysisText}
 
----
-*AI-Powered Code Review*`;
+---`;
     } catch (error) {
       this.logger.error('Response formatting error:', error);
       return analysisText;
