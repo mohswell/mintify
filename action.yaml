@@ -20,7 +20,7 @@ runs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ inputs.TOKEN }}
           ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Download previous analysis data
@@ -31,6 +31,7 @@ runs:
           path: .analysis-data
 
       - name: Set up environment
+        shell: bash
         run: |
           echo "BASE_APP_URL=${{ secrets.BASE_APP_URL }}" >> $GITHUB_ENV
           echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
@@ -43,11 +44,13 @@ runs:
           echo "LAST_ANALYZED_COMMIT=$(cat .analysis-data/last_analyzed_commit)" >> $GITHUB_ENV
 
       - name: Fetch branches
+        shell: bash
         run: |
           git fetch origin ${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}
           git fetch origin ${{ github.event.pull_request.head.ref }}:refs/remotes/origin/${{ github.event.pull_request.head.ref }}
 
       - name: Fetch Commit History
+        shell: bash
         run: |
           if git rev-parse refs/remotes/origin/${{ github.event.pull_request.base.ref }} >/dev/null 2>&1 && \
              git rev-parse refs/remotes/origin/${{ github.event.pull_request.head.ref }} >/dev/null 2>&1; then
@@ -60,10 +63,11 @@ runs:
           fi
           echo "COMMIT_HISTORY=$commits" >> $GITHUB_ENV
 
-      - name: Print Commit History for debugging
-        run: echo "$COMMIT_HISTORY"
+      # - name: Print Commit History for debugging
+      #   run: echo "$COMMIT_HISTORY"
 
       - name: Set PR Environment Variables
+        shell: bash
         run: |
           # Ensure PR number is always set
           PR_NUMBER="${{ github.event.pull_request.number }}"
@@ -80,12 +84,14 @@ runs:
           echo "HEAD_BRANCH=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
 
       - name: Debug PR_NUMBER
+        shell: bash
         run: |
           echo "PR_NUMBER: $PR_NUMBER"
 
       - name: Fetch PR Details
         env: 
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
           # Fetch PR details, ensuring mandatory fields
           pr_details=$(gh api repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER})
@@ -115,10 +121,12 @@ runs:
           echo "PR_MERGED_AT=$(echo $pr_details | jq -r .merged_at)" >> $GITHUB_ENV
       
       - name: Debug PR_NUMBER
+        shell: bash
         run: |
           echo "PR_NUMBER: $PR_NUMBER"
   
       - name: Save Pull Request Metadata and user information to server
+        shell: bash
         run: |
           # Ensure all required environment variables are set and not empty
           [[ -z "$PR_NUMBER" ]] && { echo "PR_NUMBER is empty"; exit 1; }
@@ -259,6 +267,7 @@ runs:
 
       - name: Analyze Changed Files
         if: github.event_name != 'issue_comment'
+        shell: bash
         run: |       
             echo "Analyzing changed files..."
 
@@ -368,6 +377,7 @@ runs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
 
       - name: Debug PR_NUMBER
+        shell: bash
         run: |
           echo "PR_NUMBER: $PR_NUMBER"
 
@@ -381,6 +391,7 @@ runs:
 
       - name: Post Initial Analysis Comment
         if: github.event_name != 'issue_comment'
+        shell: bash
         run: |          
           echo "Posting comment on PR..."
 
@@ -426,6 +437,8 @@ runs:
            github.event.comment.body == '/reject' ||
            github.event.comment.body == '/generate-tests' ||
            github.event.comment.body == '/skip-tests')
+
+        shell: bash
         run: |                
           echo "Processing feedback..."
 
