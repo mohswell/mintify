@@ -12,9 +12,14 @@ export class GithubService {
         this.logger.log('Attempting to store Pull Request data');
         this.logger.log(JSON.stringify(dto, null, 2));
 
-        const prNumber = Number(dto.prNumber);
-        if (isNaN(prNumber)) {
-            throw new Error('Pull Request number must be a number');
+        // const cleanedPrNumber = Number(dto.prNumber);
+        // if (isNaN(cleanedPrNumber)) {
+        //     throw new Error('Pull Request number must be a number');
+        // }
+
+        const cleanedPrNumber = parseInt(dto.prNumber.toString(), 10);
+        if (isNaN(cleanedPrNumber) || cleanedPrNumber <= 0) {
+            throw new Error('Pull Request number must be a valid number');
         }
 
         const user = await this.prisma.user.findUnique({
@@ -29,26 +34,26 @@ export class GithubService {
             const { commits, stats, ...prData } = dto;
 
             // Validate required fields
-            if (!prNumber) {
+            if (!cleanedPrNumber) {
                 throw new Error('Pull Request number is required');
             }
 
             // Find existing PR for this user and PR number
-            const existingPullRequest = await this.prisma.pullRequest.findFirst({
-                where: {
-                    prNumber: dto.prNumber,
-                    userId: userId
-                }
-            });
+            // const existingPullRequest = await this.prisma.pullRequest.findFirst({
+            //     where: {
+            //         prNumber: cleanedPrNumber,
+            //         userId: userId
+            //     }
+            // });
 
-            if(existingPullRequest){
-
-                
-            }
+            // if (existingPullRequest) {
+            //     this.logger.log(`Pull Request already exists with ID: ${existingPullRequest.id}`);
+            //     return existingPullRequest;
+            // }
 
             // Perform an upsert operation for the Pull Request
             const pullRequest = await this.prisma.pullRequest.upsert({
-                where: { prNumber },
+                where: { cleanedPrNumber },
                 update: {
                     title: prData.prTitle,
                     description: prData.description || '',
@@ -74,7 +79,7 @@ export class GithubService {
                     mergedAt: prData.mergedAt ? new Date(prData.mergedAt) : null,
                 },
                 create: {
-                    prNumber,
+                    cleanedPrNumber,
                     title: prData.prTitle,
                     description: prData.description || '',
                     author: prData.prAuthor,
