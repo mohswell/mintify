@@ -53,7 +53,7 @@ export class GithubService {
 
             // Perform an upsert operation for the Pull Request
             const pullRequest = await this.prisma.pullRequest.upsert({
-                where: { cleanedPrNumber },
+                where: { prNumber_userId: { prNumber: cleanedPrNumber, userId } },
                 update: {
                     title: prData.prTitle,
                     description: prData.description || '',

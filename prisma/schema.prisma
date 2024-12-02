@@ -91,6 +91,7 @@ model PullRequest {
   userId         BigInt
   fileAnalysis   BigInt @default(1)
   user           User           @relation(fields: [userId], references: [id])
+  @@unique([prNumber, userId])
 }
 
 model Commit {
