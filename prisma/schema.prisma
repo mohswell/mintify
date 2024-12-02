@@ -62,7 +62,7 @@ model Session {
 
 model PullRequest {
   id             BigInt         @id @default(autoincrement())
-  prNumber       Int            @unique
+  prNumber       Int            
   title          String
   description    String
   author         String
