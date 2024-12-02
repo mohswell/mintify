@@ -16,51 +16,605 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        token: ${{ inputs.TOKEN }}
-        ref: ${{ github.event.pull_request.head.ref }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.pull_request.head.ref }}
 
-    - name: Checkout mintify repository
-      uses: actions/checkout@v4
-      with:
-        repository: mohswell/mintify
-        token: ${{ inputs.TOKEN }}
-        path: mintify
-        
-    - name: Prepare and run AI scripts
-      shell: bash
-      run: |
-        # Print current directory and list contents for debugging
-        pwd
-        ls -R
+      - name: Download previous analysis data
+        continue-on-error: true
+        uses: actions/download-artifact@v3
+        with:
+          name: analysis-data
+          path: .analysis-data
 
-        # Create scripts directory if it doesn't exist
-        mkdir -p ./mintify/github/workflows/scripts
+      - name: Set up environment
+        run: |
+          echo "BASE_APP_URL=${{ secrets.BASE_APP_URL }}" >> $GITHUB_ENV
+          echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
+          # Create analysis data directory if it doesn't exist
+          mkdir -p .analysis-data
+          # If last_analyzed_commit doesn't exist, use base ref
+          if [ ! -f .analysis-data/last_analyzed_commit ]; then
+            git rev-parse ${{ github.event.pull_request.base.sha }} > .analysis-data/last_analyzed_commit
+          fi
+          echo "LAST_ANALYZED_COMMIT=$(cat .analysis-data/last_analyzed_commit)" >> $GITHUB_ENV
 
-        # Check if scripts exist
-        if [ ! -d "./mintify/github/workflows/scripts" ]; then
-          echo "Scripts directory does not exist"
-          exit 1
-        fi
+      - name: Fetch branches
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}
+          git fetch origin ${{ github.event.pull_request.head.ref }}:refs/remotes/origin/${{ github.event.pull_request.head.ref }}
 
-        # Make scripts executable
-        chmod +x ./mintify/.github/workflows/scripts/*.sh || true
+      - name: Fetch Commit History
+        run: |
+          if git rev-parse refs/remotes/origin/${{ github.event.pull_request.base.ref }} >/dev/null 2>&1 && \
+             git rev-parse refs/remotes/origin/${{ github.event.pull_request.head.ref }} >/dev/null 2>&1; then
+            # Fetch commit history and escape newlines
+            commits=$(git log --pretty=format:'%H|%s|%ae|%an|%ce|%cn|%ad' \
+                     refs/remotes/origin/${{ github.event.pull_request.base.ref }}..refs/remotes/origin/${{ github.event.pull_request.head.ref }} | tr '\n' ';')
+          else
+            echo "Unable to fetch commit history." >&2
+            exit 1
+          fi
+          echo "COMMIT_HISTORY=$commits" >> $GITHUB_ENV
 
-        # Check if scripts are executable
-        ls -l ./mintify/.github/workflows/scripts/*.sh
+      - name: Print Commit History for debugging
+        run: echo "$COMMIT_HISTORY"
 
-        # Run scripts
-        ./mintify/.github/workflows/scripts/send_metadata.sh || echo "send_metadata.sh failed"
-        ./mintify/.github/workflows/scripts/analyze_files.sh || echo "analyze_files.sh failed"
-        ./mintify/.github/workflows/scripts/post_comment.sh || echo "post_comment.sh failed"
-      env:
-        BASE_APP_URL: ${{ inputs.BASE_APP_URL }}
-        API_KEY: ${{ inputs.API_KEY }}
-        GITHUB_TOKEN: ${{ github.token }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
+      - name: Set PR Environment Variables
+        run: |
+          # Ensure PR number is always set
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          if [ -z "$PR_NUMBER" ]; then
+            echo "Error: PR Number is empty"
+            exit 1
+          fi
+          
+          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
+          echo "PR_TITLE=${{ github.event.pull_request.title }}" >> $GITHUB_ENV
+          echo "PR_AUTHOR=${{ github.event.pull_request.user.login }}" >> $GITHUB_ENV
+          echo "PR_URL=${{ github.event.pull_request.html_url }}" >> $GITHUB_ENV
+          echo "BASE_BRANCH=${{ github.event.pull_request.base.ref }}" >> $GITHUB_ENV
+          echo "HEAD_BRANCH=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
+
+      - name: Debug PR_NUMBER
+        run: |
+          echo "PR_NUMBER: $PR_NUMBER"
+
+      - name: Fetch PR Details
+        env: 
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Fetch PR details, ensuring mandatory fields
+          pr_details=$(gh api repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER})
+          
+          # Ensure PR details are retrieved
+          if [ -z "$pr_details" ]; then
+            echo "Error: Unable to fetch PR details"
+            exit 1
+          fi
+          
+          echo "PR_DRAFT=$(echo $pr_details | jq -r .draft)" >> $GITHUB_ENV
+          echo "PR_LABELS=$(echo $pr_details | jq -r '.labels | map(.name) | join(",")')" >> $GITHUB_ENV
+          echo "PR_REVIEWERS=$(echo $pr_details | jq -r '.requested_reviewers | map(.login) | join(",")')" >> $GITHUB_ENV
+          echo "PR_ADDITIONS=$(echo $pr_details | jq -r .additions)" >> $GITHUB_ENV
+          echo "PR_DELETIONS=$(echo $pr_details | jq -r .deletions)" >> $GITHUB_ENV
+          echo "PR_CHANGED_FILES=$(echo $pr_details | jq -r .changed_files)" >> $GITHUB_ENV
+          echo "PR_MERGEABLE=$(echo $pr_details | jq -r .mergeable)" >> $GITHUB_ENV
+          echo "PR_DESCRIPTION=$(echo $pr_details | jq -R .body)" >> $GITHUB_ENV
+          echo "PR_AUTHOR_USERNAME=$(echo $pr_details | jq -r .user.login)" >> $GITHUB_ENV
+          echo "PR_AUTHOR_AVATAR=$(echo $pr_details | jq -r .user.avatar_url)" >> $GITHUB_ENV
+          echo "PR_BASE_REPO=$(echo $pr_details | jq -r .base.repo.full_name)" >> $GITHUB_ENV
+          echo "PR_HEAD_REPO=$(echo $pr_details | jq -r .head.repo.full_name)" >> $GITHUB_ENV
+          echo "PR_COMMENTS=$(echo $pr_details | jq -r .comments)" >> $GITHUB_ENV
+          echo "PR_CREATED_AT=$(echo $pr_details | jq -r .created_at)" >> $GITHUB_ENV
+          echo "PR_UPDATED_AT=$(echo $pr_details | jq -r .updated_at)" >> $GITHUB_ENV
+          echo "PR_CLOSED_AT=$(echo $pr_details | jq -r .closed_at)" >> $GITHUB_ENV
+          echo "PR_MERGED_AT=$(echo $pr_details | jq -r .merged_at)" >> $GITHUB_ENV
+      
+      - name: Debug PR_NUMBER
+        run: |
+          echo "PR_NUMBER: $PR_NUMBER"
+  
+      - name: Save Pull Request Metadata and user information to server
+        run: |
+          # Ensure all required environment variables are set and not empty
+          [[ -z "$PR_NUMBER" ]] && { echo "PR_NUMBER is empty"; exit 1; }
+          
+          # Set defaults more strictly
+          export PR_DRAFT="${PR_DRAFT:-false}"
+          export PR_LABELS="${PR_LABELS:-}"
+          export PR_REVIEWERS="${PR_REVIEWERS:-}"
+          export PR_COMMENTS="${PR_COMMENTS:-0}"
+          export PR_ADDITIONS="${PR_ADDITIONS:-0}"
+          export PR_DELETIONS="${PR_DELETIONS:-0}"
+          export PR_CHANGED_FILES="${PR_CHANGED_FILES:-0}"
+          export PR_MERGEABLE="${PR_MERGEABLE:-null}"
+          
+          # Metadata for commits          
+          # Validate commit history
+          if [[ "$COMMIT_HISTORY" == "Unable to fetch commit history." || -z "$COMMIT_HISTORY" ]]; then
+            echo "Error: Commit history is invalid or empty. Aborting."
+            exit 1
+          fi
+
+          # Validate PR number explicitly
+          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
+            echo "Error: PR_NUMBER is missing or invalid"
+            exit 1
+          fi
+
+          echo "Sending metadata to server..."
+
+          IFS=$'\n'
+          commit_list=()
+          for commit in ${COMMIT_HISTORY}; do
+            IFS='|' read -r sha message author_email author_name committer_email committer_name date <<<"$commit"
+
+            # Escape commit message
+            message=$(echo "$message" | jq -Rs .)
+
+            # Fetch commit stats (fallback to 0 if stats cannot be retrieved)
+            stats=$(git show --stat --format='' "$sha" | tail -n1 || echo "")
+            files_changed=$(echo "$stats" | grep -oE '[0-9]+ file' | cut -d' ' -f1 || echo "0")
+            insertions=$(echo "$stats" | grep -oE '[0-9]+ insertion' | cut -d' ' -f1 || echo "0")
+            deletions=$(echo "$stats" | grep -oE '[0-9]+ deletion' | cut -d' ' -f1 || echo "0")
+
+            commit_list+=("{
+              \"sha\":\"$sha\",
+              \"message\":$message,
+              \"author_email\":\"$author_email\",
+              \"author_name\":\"$author_name\",
+              \"committer_email\":\"$committer_email\",
+              \"committer_name\":\"$committer_name\",
+              \"date\":\"$date\",
+              \"stats\": {
+                \"additions\": ${insertions:-0},
+                \"deletions\": ${deletions:-0},
+                \"changed_files\": ${files_changed:-0}
+              }
+            }")
+          done
+
+          # Build JSON array for commits
+          commit_json=$(printf "%s," "${commit_list[@]}")
+          commit_json="[${commit_json%,}]"
+
+          # Generate metadata
+          metadata=$(jq -n \
+            --arg pr_number "$PR_NUMBER" \
+            --arg pr_title "$PR_TITLE" \
+            --arg pr_author "$PR_AUTHOR" \
+            --arg pr_url "$PR_URL" \
+            --arg base_branch "$BASE_BRANCH" \
+            --arg head_branch "$HEAD_BRANCH" \
+            --arg description "${PR_DESCRIPTION:-null}" \
+            --arg author_username "$PR_AUTHOR_USERNAME" \
+            --arg author_avatar "$PR_AUTHOR_AVATAR" \
+            --arg base_repository "$PR_BASE_REPO" \
+            --arg head_repository "$PR_HEAD_REPO" \
+            --arg draft "$PR_DRAFT" \
+            --arg labels "${PR_LABELS:-}" \
+            --arg reviewers "${PR_REVIEWERS:-}" \
+            --arg created_at "$PR_CREATED_AT" \
+            --arg updated_at "$PR_UPDATED_AT" \
+            --arg closed_at "${PR_CLOSED_AT:-null}" \
+            --arg merged_at "${PR_MERGED_AT:-null}" \
+            --argjson mergeable "${PR_MERGEABLE:-null}" \
+            --argjson stats "{
+              \"comments\": ${PR_COMMENTS:-0},
+              \"additions\": ${PR_ADDITIONS:-0},
+              \"deletions\": ${PR_DELETIONS:-0},
+              \"changedFiles\": ${PR_CHANGED_FILES:-0}
+            }" \
+            --argjson commits "$commit_json" \
+            '{
+              prNumber: $pr_number,
+              prTitle: $pr_title,
+              prAuthor: $pr_author,
+              description: ($description | select(. != null)),
+              authorUsername: $author_username,
+              authorAvatar: $author_avatar,
+              prUrl: $pr_url,
+              baseBranch: $base_branch,
+              headBranch: $head_branch,
+              baseRepository: $base_repository,
+              headRepository: $head_repository,
+              isDraft: ($draft == "true"),
+              labels: ($labels | select(. != null and . != "") | split(",") | map(. | gsub("^[ \t]+|[ \t]+$"; "")) | map(select(. != ""))),  # White spaces Trimming
+              reviewers: ($reviewers | split(",") | map(select(. != ""))),
+              stats: $stats,
+              mergeable: $mergeable,
+              createdAt: $created_at,
+              updatedAt: $updated_at,
+              closedAt: ($closed_at | select(. != null)),
+              mergedAt: ($merged_at | select(. != null)),
+              commits: $commits
+            }')
+
+          echo "Metadata: $metadata"
+          echo "PR_NUMBER: $PR_NUMBER"
+
+          # Send metadata to the server
+          curl -v -X POST "$BASE_APP_URL/github/store-data" \
+            -H "Authorization: Bearer $API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$metadata" \
+            -d '{"prNumber": '"$PR_NUMBER"'}' \
+            --connect-timeout 10 \
+            --max-time 30 -v
+
+        env:
+          BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+          PR_TITLE: ${{ env.PR_TITLE }}
+          PR_AUTHOR: ${{ env.PR_AUTHOR }}
+          PR_URL: ${{ env.PR_URL }}
+          BASE_BRANCH: ${{ env.BASE_BRANCH }}
+          HEAD_BRANCH: ${{ env.HEAD_BRANCH }}
+          COMMIT_HISTORY: ${{ env.COMMIT_HISTORY }}
+
+      - name: Analyze Changed Files
+        if: github.event_name != 'issue_comment'
+        run: |       
+            echo "Analyzing changed files..."
+
+            # Fetch base branch for diff comparison
+            git fetch origin "${GITHUB_BASE_REF}"
+
+            analysis_results=""
+
+            # Get the last analyzed commit
+            last_analyzed_commit=$(cat .analysis-data/last_analyzed_commit)
+
+            echo "Last analyzed commit: ${last_analyzed_commit}"
+            echo "Current HEAD: ${GITHUB_HEAD_SHA}"
+
+            # Get only new changes since last analysis
+            changed_files=$(git diff --name-only "${last_analyzed_commit}" "${GITHUB_HEAD_SHA}")
+
+            # If no files have changed since last analysis
+            if [ -z "$changed_files" ]; then
+                echo "No new changes to analyze since last analysis"
+                exit 0
+            fi
+
+            echo "Files changed since last analysis:"
+            echo "$changed_files"
+
+            # Track files that have been analyzed
+            analyzed_files=()
+
+            # Load previously analyzed files if the file exists
+            if [ -f .analysis-data/analyzed_files ]; then
+                mapfile -t previous_analyzed_files < .analysis-data/analyzed_files
+            else
+                previous_analyzed_files=()
+            fi
+
+            for file in $changed_files; do
+                # Check if the file was already analyzed in previous commits
+                if [[ ! " ${previous_analyzed_files[@]} " =~ " ${file} " ]]; then
+                    if [[ "$file" == *.js || "$file" == *.ts || "$file" == *.yml || "$file" == *.md || "$file" == *.py || "$file" == *.tsx || "$file" == *.java || "$file" == *.css || "$file" == *.sh ]]; then
+                        echo "Analyzing file: $file"
+                        
+                        # Get diff only for this specific file between last analysis and current commit
+                        diff_output=$(git diff "${last_analyzed_commit}" "${GITHUB_HEAD_SHA}" -- "$file")
+                        
+                        # Calculate additions and deletions
+                        additions=$(echo "$diff_output" | grep "^+" | grep -v "^+++" | wc -l)
+                        deletions=$(echo "$diff_output" | grep "^-" | grep -v "^---" | wc -l) 
+                        
+                        if [ -n "$diff_output" ]; then
+                            # Create a meaningful diff context
+                            markdown_diff="### File: \`$file\`\n\n\`\`\`diff\n${diff_output}\n\`\`\`"
+                            escaped_diff=$(echo "$markdown_diff" | jq -sR .)
+                            
+                            # Send file analysis to new endpoint
+                            file_analysis_result=$(curl -s -X POST "${BASE_APP_URL}/github/store-file-analysis" \
+                                -H "Authorization: Bearer ${API_KEY}" \
+                                -H "Content-Type: application/json" \
+                                -d "{
+                                    \"prNumber\": ${PR_NUMBER},
+                                    \"filePath\": \"${file}\",
+                                    \"additions\": ${additions},
+                                    \"deletions\": ${deletions},
+                                    \"rawDiff\": ${escaped_diff}
+                                }")
+                            
+                            # Send diff to AI analysis endpoint
+                            result=$(curl -s -X POST "${BASE_APP_URL}/gemini/analyze-code" \
+                                -H "Authorization: Bearer ${API_KEY}" \
+                                -H "Content-Type: application/json" \
+                                -d "{
+                                    \"code\": ${escaped_diff},
+                                    \"pr_number\": \"${PR_NUMBER}\",
+                                    \"file_path\": \"${file}\"
+                                }")
+                            
+                            if [ -n "$result" ]; then
+                                analysis_results="${analysis_results}\n## Analysis for \`$file\`\n${result}"
+                                analyzed_files+=("$file")
+                            fi
+                        fi
+                    fi
+                else
+                    echo "Skipping already analyzed file: $file"
+                fi
+            done
+
+            # Save current commit as last analyzed
+            echo "${GITHUB_HEAD_SHA}" > .analysis-data/last_analyzed_commit
+
+            # Combine previous and new analyzed files, removing duplicates
+            unique_analyzed_files=($(printf "%s\n" "${previous_analyzed_files[@]}" "${analyzed_files[@]}" | sort -u))
+
+            # Save list of unique analyzed files
+            printf "%s\n" "${unique_analyzed_files[@]}" > .analysis-data/analyzed_files
+
+            # Save results for use in the comment script
+            echo "ANALYSIS_RESULTS<<EOF" >> $GITHUB_ENV
+            echo -e "$analysis_results" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+        env:
+          BASE_APP_URL: ${{ env.BASE_APP_URL }}
+          API_KEY: ${{ env.API_KEY }}
+          GITHUB_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          LAST_ANALYZED_COMMIT: ${{ env.LAST_ANALYZED_COMMIT }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
+      - name: Debug PR_NUMBER
+        run: |
+          echo "PR_NUMBER: $PR_NUMBER"
+
+      - name: Save analysis data
+        if: github.event_name != 'issue_comment'
+        uses: actions/upload-artifact@v3
+        with:
+          name: analysis-data
+          path: .analysis-data
+          retention-days: 1
+
+      - name: Post Initial Analysis Comment
+        if: github.event_name != 'issue_comment'
+        run: |          
+          echo "Posting comment on PR..."
+
+          COMMENT_BODY=$(cat << EOF
+          # Code Analysis Report
+
+          ${ANALYSIS_RESULTS}
+
+          ---
+
+          ## Actions:
+          1. Review the analysis above
+          2. Choose an action:
+            - Click [Approve](https://github.com/${REPO}/issues/${PR_NUMBER}/comments?body=/approve) to accept changes
+            - Click [Reject](https://github.com/${REPO}/issues/${PR_NUMBER}/comments?body=/reject) to reject changes
+
+          ## Test Generation:
+          After approving, you can:
+          - Reply \`/generate-tests\` to generate test cases
+          - Reply \`/skip-tests\` to skip test generation
+
+          *Generated by AI Code Analysis*
+          EOF
+          )
+
+          # Post the comment
+          curl -X POST \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d "{\"body\": $(echo "$COMMENT_BODY" | jq -sR)}" \
+            "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANALYSIS_RESULTS: ${{ env.ANALYSIS_RESULTS }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
+
+      - name: Process Feedback
+        if: |
+          github.event_name == 'issue_comment' && 
+          (github.event.comment.body == '/approve' ||
+           github.event.comment.body == '/reject' ||
+           github.event.comment.body == '/generate-tests' ||
+           github.event.comment.body == '/skip-tests')
+        run: |                
+          echo "Processing feedback..."
+
+          # Function to post comment using GitHub API
+          post_comment() {
+            local body="$1"
+            curl -X POST \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -d "{\"body\": $(echo "$body" | jq -sR)}" \
+              "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
+          }
+
+          # Function to generate tests for a file
+          generate_tests() {
+            local file="$1"
+            local file_content=$(cat "$file")
+            local escaped_content=$(echo "$file_content" | jq -sR .)
+
+            echo "Sending file content for testing: $file" 
+
+            # Format the content as markdown for the test formatter
+            local markdown_content="### File: \`$file\`\n\n\`\`\`typescript\n${file_content}\n\`\`\`"
+            local escaped_markdown=$(echo "$markdown_content" | jq -sR .)
+            
+            # Send request to test generation service
+            local response=$(curl -s -X POST "${BASE_APP_URL}/gemini/generate-tests" \
+              -H "Authorization: Bearer ${API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "{\"code\": ${escaped_markdown}}")
+
+            echo "Received response: $response" # Debug log
+            
+            # Extract the test code from the response
+            # Assumes the response follows the format from `TestFormatterService`
+            local test_code=$(echo "$response" | grep -oP '(?<=```(?:typescript|js|javascript)?\n)[\s\S]*?(?=\n```)')
+            
+            # If no test code found, use the entire response
+            if [ -z "$test_code" ]; then
+              test_code="$response"
+            fi
+            
+            echo "$test_code"
+          }
+
+          # Process different comment triggers
+          case "$COMMENT_BODY" in
+            "/approve")
+              echo "Feedback: Approved"
+              
+              # Configure git
+              git config --global user.name "github-actions[bot]"
+              git config --global user.email "github-actions[bot]@users.noreply.github.com"
+              
+              # Apply suggested changes
+              if [ -n "$ANALYSIS_RESULTS" ]; then
+                echo "$ANALYSIS_RESULTS" | while IFS= read -r line; do
+                  if [[ $line == *"replace"* ]]; then
+                    file_path=$(echo "$line" | grep -oP '(?<=File: `)[^`]+')
+                    suggestion=$(echo "$line" | grep -oP '(?<=\`\`\`diff\n)[\s\S]+(?=\n\`\`\`)')
+                    echo "$suggestion" | patch "$file_path"
+                  fi
+                done
+                
+                # Commit and push changes
+                git add .
+                git commit -m "Apply AI code suggestions"
+                git push origin HEAD
+              fi
+              
+              post_comment "### ✅ Changes Approved
+              
+          Would you like to generate tests for the changed files?
+          - Reply \`/generate-tests\` to generate test cases
+          - Reply \`/skip-tests\` to skip test generation"
+              ;;
+              
+            "/reject")
+              post_comment "### ❌ Changes Rejected
+              
+          No changes have been applied. Please review the feedback and make necessary adjustments."
+              ;;
+              
+              "/generate-tests")
+              # Add debugging logs here at the start of the case
+              echo "=== DEBUG INFORMATION ==="
+              echo "BASE_APP_URL: ${BASE_APP_URL}"
+              echo "API_KEY is set: $([ ! -z "${API_KEY}" ] && echo 'yes' || echo 'no')"
+              echo "Current directory: $(pwd)"
+              echo "Contents of .analysis-data:"
+              ls -la .analysis-data || echo "Directory not found"
+              echo "=== END DEBUG INFO ==="
+              
+              echo "Generating tests..."
+              test_results=""
+              
+              # Read the analyzed files from the saved list
+              if [ -f ".analysis-data/analyzed_files" ]; then
+                  echo "=== ANALYZED FILES CONTENT ==="
+                  cat ".analysis-data/analyzed_files"
+                  echo "=== END ANALYZED FILES ==="
+                  
+                  while IFS= read -r file; do
+                      echo "Processing file: $file"
+                      if [[ "$file" =~ \.(ts|js|tsx|jsx)$ ]]; then
+                          echo "Generating tests for $file"
+                          
+                          # Read the file content
+                          if [ -f "$file" ]; then
+                              echo "File exists, reading content..."
+                              file_content=$(cat "$file")
+                              
+                              # Format the content as markdown
+                              echo "Formatting content as markdown..."
+                              markdown_content="### File: \`$file\`\n\n\`\`\`typescript\n${file_content}\n\`\`\`"
+                              escaped_markdown=$(echo "$markdown_content" | jq -sR .)
+                              
+                              # Send request to test generation service
+                              echo "Sending request to test generation service..."
+                              echo "Request URL: ${BASE_APP_URL}/gemini/generate-tests"
+                              test_response=$(curl -v -X POST "${BASE_APP_URL}/gemini/generate-tests" \
+                                  -H "Authorization: Bearer ${API_KEY}" \
+                                  -H "Content-Type: application/json" \
+                                  -d "{\"code\": ${escaped_markdown}}" 2>&1)
+                              
+                              echo "Raw API Response:"
+                              echo "$test_response"
+                              
+                              if [ -n "$test_response" ]; then
+                                  echo "Received non-empty response"
+                                  # Extract the text field from the JSON response
+                                  test_code=$(echo "$test_response" | jq -r '.text // .')
+                                  
+                                  test_results="${test_results}
+          ## Tests for \`$file\`
+
+          ${test_code}
+
+          ---
+          "
+                              else
+                                  echo "Received empty response from API"
+                              fi
+                          else
+                              echo "File not found: $file"
+                          fi
+                      else
+                          echo "File $file is not a TypeScript/JavaScript file, skipping"
+                      fi
+                  done < ".analysis-data/analyzed_files"
+              else
+                  echo "No analyzed files found at .analysis-data/analyzed_files"
+              fi
+              
+              echo "=== FINAL TEST RESULTS ==="
+              echo "$test_results"
+              echo "=== END TEST RESULTS ==="
+              
+              if [ -n "$test_results" ]; then
+                  echo "Posting comment with test results..."
+                  post_comment "### 🧪 Generated Tests
+
+          ${test_results}
+
+          *Review the generated tests and add them to your test suite if they look good.*"
+              else
+                  echo "No test results generated, posting warning..."
+                  post_comment "### ⚠️ No Tests Generated
+          No eligible files found for test generation or test generation failed."
+              fi
+              ;;
+              
+            "/skip-tests")
+              post_comment "### ⏭️ Test Generation Skipped
+          Proceeding without generating tests."
+              ;;
+              
+            *)
+              echo "Unknown command: $COMMENT_BODY"
+              ;;
+          esac
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_APP_URL: ${{ env.BASE_APP_URL }}
+          API_KEY: ${{ env.API_KEY }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
 branding:
   icon: 'activity'
