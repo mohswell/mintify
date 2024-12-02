@@ -15,6 +15,10 @@ runs:
   steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        ref: ${{ github.event.pull_request.head.ref }}
 
     - name: Prepare and run AI scripts
       shell: bash
