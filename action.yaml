@@ -33,8 +33,8 @@ runs:
       - name: Set up environment
         shell: bash
         run: |
-          echo "BASE_APP_URL=${{ input.BASE_APP_URL }}" >> $GITHUB_ENV
-          echo "API_KEY=${{ input.API_KEY }}" >> $GITHUB_ENV
+          echo "BASE_APP_URL=${{ inputs.BASE_APP_URL }}" >> $GITHUB_ENV
+          echo "API_KEY=${{ inputs.API_KEY }}" >> $GITHUB_ENV
           # Create analysis data directory if it doesn't exist
           mkdir -p .analysis-data
           # If last_analyzed_commit doesn't exist, use base ref
@@ -90,7 +90,7 @@ runs:
 
       - name: Fetch PR Details
         env: 
-          GH_TOKEN: ${{ input.TOKEN }}
+          GH_TOKEN: ${{ inputs.TOKEN }}
         shell: bash
         run: |
           # Fetch PR details, ensuring mandatory fields
@@ -255,8 +255,8 @@ runs:
             --max-time 30 -v
 
         env:
-          BASE_APP_URL: ${{ input.BASE_APP_URL }}
-          API_KEY: ${{ input.API_KEY }}
+          BASE_APP_URL: ${{ inputs.BASE_APP_URL }}
+          API_KEY: ${{ inputs.API_KEY }}
           PR_NUMBER: ${{ env.PR_NUMBER }}
           PR_TITLE: ${{ env.PR_TITLE }}
           PR_AUTHOR: ${{ env.PR_AUTHOR }}
@@ -424,7 +424,7 @@ runs:
             -d "{\"body\": $(echo "$COMMENT_BODY" | jq -sR)}" \
             "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
         env:
-          GITHUB_TOKEN: ${{ input.TOKEN }}
+          GITHUB_TOKEN: ${{ inputs.TOKEN }}
           ANALYSIS_RESULTS: ${{ env.ANALYSIS_RESULTS }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -621,7 +621,7 @@ runs:
               ;;
           esac
         env:
-          GITHUB_TOKEN: ${{ input.TOKEN }}
+          GITHUB_TOKEN: ${{ inputs.TOKEN }}
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
           API_KEY: ${{ env.API_KEY }}
           COMMENT_BODY: ${{ github.event.comment.body }}
