@@ -250,7 +250,6 @@ runs:
             -H "Authorization: Bearer $API_KEY" \
             -H "Content-Type: application/json" \
             -d "$metadata" \
-            -d '{"prNumber": '"$PR_NUMBER"'}' \
             --connect-timeout 10 \
             --max-time 30 -v
 
