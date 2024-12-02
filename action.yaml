@@ -9,6 +9,9 @@ inputs:
   API_KEY:
     description: 'API key for authentication and authorization grants to Bunjy AI web resources'
     required: true
+  TOKEN:
+    description: 'Personal access token for the repository'
+    required: true
 
 runs:
   using: "composite"
