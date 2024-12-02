@@ -2,6 +2,56 @@
 
 This is an innovative AI-powered analysis tool designed to enhance code review and pull request management using cutting-edge AI technologies.
 
+## Usage
+
+### Prerequisites
+- A GitHub repository
+- GitHub Actions enabled
+- An account on [Bunjy AI](https://bunjy.vercel.app)
+
+### Step 1: Generate API Credentials
+1. Visit [Bunjy AI](https://bunjy.vercel.app)
+2. Log in with your GitHub account
+3. Navigate to "Integration Settings"
+4. Generate a new API Key
+5. Copy your unique `BASE_APP_URL`
+
+### Step 2: Configure Repository Secrets
+In your GitHub repository:
+1. Go to "Settings"
+2. Select "Secrets and variables"
+3. Click "New repository secret"
+4. Add two secrets:
+   - Name: `BASE_APP_URL`
+     - Value: Your unique base URL from Bunjy AI
+   - Name: `API_KEY`
+     - Value: Your generated API key
+
+### Step 3: Create Workflow File
+Create a `.github/workflows/ai.yml` file in your repository:
+
+```yaml
+name: Bunjy AI Code Review
+
+on:
+  pull_request:
+    branches:
+      '*'
+
+jobs:
+  ai:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Bunjy AI Analysis
+        uses: mohswell/mintify@v1.0.1
+        with:
+          BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+```
+
 ## How It Works: Technical Architecture
 
 ### 1. Authentication and Integration
@@ -38,6 +88,8 @@ This application provides intelligent insights into GitHub pull requests by anal
 - AI-driven suggestions for PR quality improvements.
 - PR risk assessments based on AI analysis.
 - Reviewer suggestions and code quality highlights.
+- Insights displayed directly in GitHub Pull Requests
+- Comprehensive analysis available in Bunjy AI dashboard
 
 ## API Keys and Base App URL to use as repository secrets
 
