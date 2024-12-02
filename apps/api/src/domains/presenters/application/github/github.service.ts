@@ -10,15 +10,14 @@ export class GithubService {
 
     async storePullRequestData(dto: PullRequestDTO, userId: bigint) {
         this.logger.log('Attempting to store Pull Request data');
-        this.logger.log(JSON.stringify(dto, null, 2));
+        this.logger.log(`User ID: ${userId}`);
+        this.logger.log(`PR Number: ${dto.prNumber}`);
+        this.logger.log(`PR URL: ${dto.prUrl}`);
 
-        // const cleanedPrNumber = Number(dto.prNumber);
-        // if (isNaN(cleanedPrNumber)) {
-        //     throw new Error('Pull Request number must be a number');
-        // }
-
+        // More robust PR number validation
         const cleanedPrNumber = parseInt(dto.prNumber.toString(), 10);
         if (isNaN(cleanedPrNumber) || cleanedPrNumber <= 0) {
+            this.logger.error('Invalid PR number');
             throw new Error('Pull Request number must be a valid number');
         }
 
@@ -27,91 +26,78 @@ export class GithubService {
         });
 
         if (!user) {
+            this.logger.error(`User not found with ID: ${userId}`);
             throw new Error('Invalid user');
         }
 
         try {
-            const { commits, stats, ...prData } = dto;
+            // Detailed logging of incoming DTO
+            this.logger.log('Full DTO:', JSON.stringify(dto, null, 2));
 
-            // Validate required fields
-            if (!cleanedPrNumber) {
-                throw new Error('Pull Request number is required');
-            }
-
-            // Find existing PR for this user and PR number
-            // const existingPullRequest = await this.prisma.pullRequest.findFirst({
-            //     where: {
-            //         prNumber: cleanedPrNumber,
-            //         userId: userId
-            //     }
-            // });
-
-            // if (existingPullRequest) {
-            //     this.logger.log(`Pull Request already exists with ID: ${existingPullRequest.id}`);
-            //     return existingPullRequest;
-            // }
-
-            // Perform an upsert operation for the Pull Request
-            const pullRequest = await this.prisma.pullRequest.upsert({
-                where: { prNumber_userId: { prNumber: cleanedPrNumber, userId } },
-                update: {
-                    title: prData.prTitle,
-                    description: prData.description || '',
-                    author: prData.prAuthor,
-                    authorUsername: prData.authorUsername || prData.prAuthor,
-                    authorAvatar: prData.authorAvatar || '',
-                    url: prData.prUrl,
-                    baseBranch: prData.baseBranch,
-                    headBranch: prData.headBranch,
-                    baseRepository: prData.baseRepository,
-                    headRepository: prData.headRepository,
-                    isDraft: prData.isDraft || false,
-                    labels: prData.labels || [],
-                    reviewers: prData.reviewers || [],
-                    comments: stats.comments || 0,
-                    additions: stats.additions || 0,
-                    deletions: stats.deletions || 0,
-                    changedFiles: stats.changedFiles || 0,
-                    mergeable: prData.mergeable ?? null,
-                    createdAt: new Date(prData.createdAt),
-                    updatedAt: prData.updatedAt ? new Date(prData.updatedAt) : new Date(),
-                    closedAt: prData.closedAt ? new Date(prData.closedAt) : null,
-                    mergedAt: prData.mergedAt ? new Date(prData.mergedAt) : null,
-                },
-                create: {
-                    prNumber: cleanedPrNumber, // Use 'prNumber' here
-                    title: prData.prTitle,
-                    description: prData.description || '',
-                    author: prData.prAuthor,
-                    authorUsername: prData.authorUsername || prData.prAuthor,
-                    authorAvatar: prData.authorAvatar || '',
-                    url: prData.prUrl,
-                    baseBranch: prData.baseBranch,
-                    headBranch: prData.headBranch,
-                    baseRepository: prData.baseRepository,
-                    headRepository: prData.headRepository,
-                    isDraft: prData.isDraft || false,
-                    labels: prData.labels || [],
-                    reviewers: prData.reviewers || [],
-                    comments: stats.comments || 0,
-                    additions: stats.additions || 0,
-                    deletions: stats.deletions || 0,
-                    changedFiles: stats.changedFiles || 0,
-                    mergeable: prData.mergeable ?? null,
-                    createdAt: new Date(prData.createdAt),
-                    updatedAt: new Date(),
-                    closedAt: prData.closedAt ? new Date(prData.closedAt) : null,
-                    mergedAt: prData.mergedAt ? new Date(prData.mergedAt) : null,
-                    userId, // Correctly assign 'userId'
-                },
+            // First, check if a PR with this number and user already exists
+            const existingPullRequest = await this.prisma.pullRequest.findFirst({
+                where: {
+                    prNumber: cleanedPrNumber,
+                    userId: userId
+                }
             });
-            
 
-            this.logger.log(`Pull Request processed with ID: ${pullRequest.id}`);
+            // Determine if this is a new PR or an update
+            const isNewPr = !existingPullRequest;
 
-            if (commits && commits.length > 0) {
-                this.logger.log(`Processing ${commits.length} commits`);
-                const commitPromises = commits.map(async (commit: CommitDTO) => {
+            // Prepare upsert data
+            const pullRequestData = {
+                prNumber: cleanedPrNumber,
+                title: dto.prTitle,
+                description: dto.description || '',
+                author: dto.prAuthor,
+                authorUsername: dto.authorUsername || dto.prAuthor,
+                authorAvatar: dto.authorAvatar || '',
+                url: dto.prUrl,
+                baseBranch: dto.baseBranch,
+                headBranch: dto.headBranch,
+                baseRepository: dto.baseRepository,
+                headRepository: dto.headRepository,
+                isDraft: dto.isDraft || false,
+                labels: dto.labels || [],
+                reviewers: dto.reviewers || [],
+                comments: dto.stats?.comments || 0,
+                additions: dto.stats?.additions || 0,
+                deletions: dto.stats?.deletions || 0,
+                changedFiles: dto.stats?.changedFiles || 0,
+                mergeable: dto.mergeable ?? null,
+                createdAt: new Date(dto.createdAt),
+                updatedAt: dto.updatedAt ? new Date(dto.updatedAt) : new Date(),
+                closedAt: dto.closedAt ? new Date(dto.closedAt) : null,
+                mergedAt: dto.mergedAt ? new Date(dto.mergedAt) : null,
+                userId
+            };
+
+            // Perform upsert with more explicit update conditions
+            const pullRequest = await this.prisma.pullRequest.upsert({
+                where: {
+                    prNumber_userId: {
+                        prNumber: cleanedPrNumber,
+                        userId
+                    }
+                },
+                update: {
+                    ...pullRequestData,
+                    // Only update if the URL has changed or other significant fields differ
+                    ...(existingPullRequest && existingPullRequest.url !== dto.prUrl
+                        ? { url: dto.prUrl }
+                        : {}),
+                },
+                create: pullRequestData,
+            });
+
+            this.logger.log(`Pull Request ${isNewPr ? 'created' : 'updated'} with ID: ${pullRequest.id}`);
+
+            // Process commits if present
+            if (dto.commits && dto.commits.length > 0) {
+                this.logger.log(`Processing ${dto.commits.length} commits`);
+
+                const commitPromises = dto.commits.map(async (commit) => {
                     try {
                         const validDate = commit.date && !isNaN(new Date(commit.date).getTime())
                             ? new Date(commit.date)
@@ -122,6 +108,20 @@ export class GithubService {
                             return null;
                         }
 
+                        // Check if commit already exists for this PR
+                        const existingCommit = await this.prisma.commit.findFirst({
+                            where: {
+                                commitHash: commit.sha,
+                                pullRequestId: pullRequest.id
+                            }
+                        });
+
+                        if (existingCommit) {
+                            this.logger.log(`Commit ${commit.sha} already exists for this PR`);
+                            return existingCommit;
+                        }
+
+                        // Create new commit
                         const createdCommit = await this.prisma.commit.create({
                             data: {
                                 commitHash: commit.sha,
@@ -136,6 +136,7 @@ export class GithubService {
                             },
                         });
 
+                        // Create commit stats if available
                         if (commit.stats) {
                             await this.prisma.commitStats.create({
                                 data: {
@@ -149,7 +150,7 @@ export class GithubService {
 
                         return createdCommit;
                     } catch (commitError) {
-                        this.logger.error(`Error processing commit: ${(commitError as any).message}`, (commitError as any).stack);
+                        this.logger.error(`Error processing individual commit: ${(commitError as any).message}`, (commitError as any).stack);
                         return null;
                     }
                 });
