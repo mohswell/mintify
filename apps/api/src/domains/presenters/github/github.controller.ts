@@ -1,4 +1,4 @@
-import { BadRequestException, Body, ClassSerializerInterceptor, Get, HttpException, HttpStatus, NotFoundException, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, ClassSerializerInterceptor, Get, HttpException, HttpStatus, Logger, NotFoundException, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { BaseController } from '~decorators/version.decorator';
 import { PullRequestDTO, PullRequestResponseDTO } from '~dto';
 import { GithubService } from '../application/github/github.service';
@@ -11,16 +11,17 @@ import { FileAnalysisService } from '../sanctum/analysis.service';
 export class GithubController {
     constructor(
         private readonly githubService: GithubService,
-        private readonly fileAnalysisService: FileAnalysisService
+        private readonly fileAnalysisService: FileAnalysisService,
+        private readonly logger: Logger,
     ) { }
 
     @Post('store-data')
     async storeData(@Req() req: any, @Body() prMetadata: any) {
         console.log('Received request:', req.body);
-        console.log('Cleaned Metadata:', prMetadata); 
+        console.log('Cleaned Metadata:', prMetadata);
 
         try {
-            const user = req.user; 
+            const user = req.user;
             if (!user) {
                 throw new HttpException(
                     'User information not found in request.',
@@ -31,6 +32,13 @@ export class GithubController {
             console.log('User ID:', user.id);
             const userId = user.id;
 
+            if (!prMetadata.prNumber) {
+                throw new HttpException(
+                    'Pull Request number is required',
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
             const cleanedMetadata = {
                 ...prMetadata,
                 closedAt: prMetadata.closedAt === 'null' ? null : prMetadata.closedAt,
@@ -38,6 +46,8 @@ export class GithubController {
                 description: prMetadata.description === 'null' ? null : prMetadata.description,
                 authorAvatar: prMetadata.authorAvatar?.replace(/;$/, ''),
                 prUrl: prMetadata.prUrl?.replace(/;$/, ''),
+                labels: prMetadata.labels || [],
+                reviewers: prMetadata.reviewers || [],
             };
 
             console.log('Processed Metadata:', cleanedMetadata);
@@ -48,7 +58,7 @@ export class GithubController {
                 data: result,
             };
         } catch (error) {
-            console.error('Error in storeData:', (error as any).message, (error as any).stack); 
+            this.logger.error('Error in storeData:', error);
             throw new HttpException(
                 {
                     status: HttpStatus.INTERNAL_SERVER_ERROR,
