@@ -75,9 +75,9 @@ import { UserProvider } from '~auth/providers/suppliers/user.provider';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // Apply request logger middleware to all routes
-    consumer
-      .apply(RequestLoggerMiddleware)
-      .forRoutes('*');
+    // consumer
+    //   .apply(RequestLoggerMiddleware)
+    //   .forRoutes('*');
 
     // consumer
     //   .apply(ContentTypeMiddleware)

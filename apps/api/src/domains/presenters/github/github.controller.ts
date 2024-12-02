@@ -41,6 +41,7 @@ export class GithubController {
 
             const cleanedMetadata = {
                 ...prMetadata,
+                prNumber: prMetadata.prNumber || 1,
                 closedAt: prMetadata.closedAt === 'null' ? null : prMetadata.closedAt,
                 mergedAt: prMetadata.mergedAt === 'null' ? null : prMetadata.mergedAt,
                 description: prMetadata.description === 'null' ? null : prMetadata.description,
@@ -49,6 +50,11 @@ export class GithubController {
                 labels: prMetadata.labels || [],
                 reviewers: prMetadata.reviewers || [],
             };
+
+            if (!cleanedMetadata.prNumber) {
+                console.error('prNumber is missing in metadata:', prMetadata);
+                throw new HttpException('Pull Request number is required', HttpStatus.BAD_REQUEST);
+            }
 
             console.log('Processed Metadata:', cleanedMetadata);
 

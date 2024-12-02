@@ -306,7 +306,7 @@ runs:
             for file in $changed_files; do
                 # Check if the file was already analyzed in previous commits
                 if [[ ! " ${previous_analyzed_files[@]} " =~ " ${file} " ]]; then
-                    if [[ "$file" == *.js || "$file" == *.ts || "$file" == *.yml || "$file" == *.md || "$file" == *.py || "$file" == *.tsx || "$file" == *.java || "$file" == *.css || "$file" == *.sh ]]; then
+                    if [[ "$file" == *.js || "$file" == *.ts || "$file" == *.yml || "$file" == *.md || "$file" == *.py || "$file" == *.dart || "$file" == *.tsx || "$file" == *.java || "$file" == *.dart || "$file" == *.css || "$file" == *.sh ]]; then
                         echo "Analyzing file: $file"
                         
                         # Get diff only for this specific file between last analysis and current commit
