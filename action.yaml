@@ -17,12 +17,19 @@ runs:
   using: "composite"
   steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
         token: ${{ inputs.TOKEN }}
         ref: ${{ github.event.pull_request.head.ref }}
 
+    - name: Checkout mintify repository
+      uses: actions/checkout@v4
+      with:
+        repository: mohswell/mintify
+        token: ${{ inputs.TOKEN }}
+        path: mintify
+        
     - name: Prepare and run AI scripts
       shell: bash
       run: |
@@ -31,24 +38,24 @@ runs:
         ls -R
 
         # Create scripts directory if it doesn't exist
-        mkdir -p .github/workflows/scripts
+        mkdir -p ./mintify/github/workflows/scripts
 
         # Check if scripts exist
-        if [ ! -d ".github/workflows/scripts" ]; then
+        if [ ! -d "./mintify/github/workflows/scripts" ]; then
           echo "Scripts directory does not exist"
           exit 1
         fi
 
         # Make scripts executable
-        chmod +x .github/workflows/scripts/*.sh || true
+        chmod +x ./mintify/.github/workflows/scripts/*.sh || true
 
         # Check if scripts are executable
-        ls -l .github/workflows/scripts/*.sh
+        ls -l ./mintify/.github/workflows/scripts/*.sh
 
         # Run scripts
-        .github/workflows/scripts/send_metadata.sh || echo "send_metadata.sh failed"
-        .github/workflows/scripts/analyze_files.sh || echo "analyze_files.sh failed"
-        .github/workflows/scripts/post_comment.sh || echo "post_comment.sh failed"
+        ./mintify/.github/workflows/scripts/send_metadata.sh || echo "send_metadata.sh failed"
+        ./mintify/.github/workflows/scripts/analyze_files.sh || echo "analyze_files.sh failed"
+        ./mintify/.github/workflows/scripts/post_comment.sh || echo "post_comment.sh failed"
       env:
         BASE_APP_URL: ${{ inputs.BASE_APP_URL }}
         API_KEY: ${{ inputs.API_KEY }}
