@@ -46,7 +46,7 @@ export default function Header() {
         <form>
           <div className="relative">
             <div className="relative">
-              <div className="text-lg font-semibold md:text-base overflow-hidden text-ellipsis whitespace-nowrap">
+              <div className="text-lg font-semibold md:text-base dark:text-white overflow-hidden text-ellipsis whitespace-nowrap">
                 {user && `${user}`}
                 {greeting && `, ${greeting}`}
               </div>
