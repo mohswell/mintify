@@ -79,7 +79,7 @@ export class GithubService {
                     mergedAt: prData.mergedAt ? new Date(prData.mergedAt) : null,
                 },
                 create: {
-                    cleanedPrNumber,
+                    prNumber: cleanedPrNumber, // Use 'prNumber' here
                     title: prData.prTitle,
                     description: prData.description || '',
                     author: prData.prAuthor,
@@ -102,9 +102,10 @@ export class GithubService {
                     updatedAt: new Date(),
                     closedAt: prData.closedAt ? new Date(prData.closedAt) : null,
                     mergedAt: prData.mergedAt ? new Date(prData.mergedAt) : null,
-                    userId,
+                    userId, // Correctly assign 'userId'
                 },
             });
+            
 
             this.logger.log(`Pull Request processed with ID: ${pullRequest.id}`);
 
