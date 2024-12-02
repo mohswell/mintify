@@ -1,9 +1,6 @@
 name: 'Bunjy-AI'
 description: 'Integrate AI into your code repository with an action powered by Gemini Nano'
 author: 'mohswell'
-branding:
-  icon: 'activity'
-  color: 'blue'
 
 inputs:
   BASE_APP_URL:
@@ -16,18 +13,26 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.TOKEN }}
- 
-    - name: Checkout workflow code
-      uses: actions/checkout@v4
-      with:
-        repository: mohswell/mintify
-        token: ${{ secrets.TOKEN }}
-        path: 'reusable-actions'
-
-    - name: Run the AI job
+    - name: Run AI Analysis
       shell: bash
-      run: .github/workflows/ai.yml
+      run: |
+        # Ensure scripts are executable
+        chmod +x .github/workflows/scripts/*.sh
+        
+        # Run metadata send script
+        .github/workflows/scripts/send_metadata.sh
+        
+        # Run file analysis script
+        .github/workflows/scripts/analyze_files.sh
+        
+        # Run comment posting script
+        .github/workflows/scripts/post_comment.sh
+      env:
+        BASE_APP_URL: ${{ inputs.BASE_APP_URL }}
+        API_KEY: ${{ inputs.API_KEY }}
+        GITHUB_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+
+branding:
+  icon: 'activity'
+  color: 'blue'
