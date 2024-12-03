@@ -245,13 +245,21 @@ runs:
           echo "Metadata: $metadata"
           echo "PR_NUMBER: $PR_NUMBER"
 
-          # Send metadata to the server
-          curl -v -X POST "$BASE_APP_URL/github/store-data" \
-            -H "Authorization: Bearer $API_KEY" \
-            -H "Content-Type: application/json" \
-            -d "$metadata" \
-            --connect-timeout 10 \
-            --max-time 30 -v
+
+          if echo "$metadata" | jq empty; then
+            echo "Metadata is valid JSON."
+            # Proceed with API call
+            # Send metadata to the server
+                    curl -X POST "$BASE_APP_URL/github/store-data" \
+                      -H "Authorization: Bearer $API_KEY" \
+                      -H "Content-Type: application/json" \
+                      -d "$metadata" \
+                      --connect-timeout 20 \
+                      --max-time 60 -v
+          else
+            echo "Metadata is invalid JSON. Aborting."
+            exit 1
+          fi
 
         env:
           BASE_APP_URL: ${{ inputs.BASE_APP_URL }}
