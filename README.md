@@ -79,6 +79,7 @@ jobs:
      - Reviewer recommendations
 
 ### 3. Data Flow
+```mermaid
 flowchart LR
     A[GitHub PR] --> B[Core API Service]
     B --> C[Gemini AI]
@@ -89,7 +90,7 @@ flowchart LR
     G -->|Review/Update| B
     D -->|Detailed Insights| H[Reporting Tools]
     H -->|Export/Share| I[External Platforms]
-
+```
 ---
 
 ## 🛠️ What Does This App Do?
