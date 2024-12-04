@@ -45,6 +45,7 @@ runs:
         run: |
           echo "BASE_APP_URL=${{ inputs.BASE_APP_URL }}" >> $GITHUB_ENV
           echo "API_KEY=${{ inputs.API_KEY }}" >> $GITHUB_ENV
+          echo "TOKEN=${{ inputs.TOKEN }}" >> $GITHUB_ENV
           # Create analysis data directory if it doesn't exist
           mkdir -p .analysis-data
 
