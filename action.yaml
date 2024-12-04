@@ -51,13 +51,6 @@ runs:
           echo "API_KEY=${{ inputs.API_KEY }}" >> $GITHUB_ENV
           echo "TOKEN=${{ inputs.TOKEN }}" >> $GITHUB_ENV
 
-          # Use the input token if provided, otherwise use the default GITHUB_TOKEN
-          # if [ -n "${{ inputs.TOKEN }}" ]; then
-          #   echo "TOKEN=${{ inputs.TOKEN }}" >> $GITHUB_ENV
-          # else
-          #   echo "TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
-          # fi
-
           # Create analysis data directory if it doesn't exist
           mkdir -p .analysis-data
 
