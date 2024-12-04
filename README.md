@@ -12,26 +12,29 @@ This is an innovative AI-powered analysis tool designed to enhance code review a
 ### Step 1: Generate API Credentials
 1. Visit [Bunjy AI](https://bunjy.vercel.app)
 2. Log in with your GitHub account
-3. Navigate to "Integration Settings"
-4. Generate a new API Key
-5. Copy your unique `BASE_APP_URL`
+3. On the homepage sidebar click and navigate to "Access Tokens"
+4. Generate a new API Key and Base app url by clicking the generate button
+5. Copy your unique `API_KEY ` and `BASE_APP_URL`
 
 ### Step 2: Configure Repository Secrets
 In your GitHub repository:
 1. Go to "Settings"
 2. Select "Secrets and variables"
 3. Click "New repository secret"
-4. Add two secrets:
+4. Add the two secrets:
    - Name: `BASE_APP_URL`
      - Value: Your unique base URL from Bunjy AI
    - Name: `API_KEY`
      - Value: Your generated API key
+5. **NOTE: The action DOES NOT needs a personal TOKEN from github**, if not provided it defaults to the one provided by github actions automatically.
+
+I will soon find a way to use the action without the `BASE_APP_URL` specified, making it more flexible and easier to configure.
 
 ### Step 3: Create Workflow File
-Create a `.github/workflows/ai.yml` file in your repository:
+Create a `.github/workflows/ai.yml` file in your repository, use this template to set up:
 
 ```yaml
-name: Bunjy AI Code Review
+name: AI Code Review
 
 on:
   pull_request:
@@ -46,11 +49,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Bunjy-AI              
-        uses: mohswell/mintify@v1.1.4
+        uses: mohswell/mintify@v2.0
         with:
           BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
           API_KEY: ${{ secrets.API_KEY }}
-          TOKEN: ${{ secrets.TOKEN }}
 ```
 
 ## How It Works: Technical Architecture
@@ -58,10 +60,11 @@ jobs:
 ### 1. Authentication and Integration
 - Users setup the action in their workflows.
 - The action requires a `BASE_APP_URL` and `API_KEY` defined in your respository secrets.
-- You'll visit the dashboard page at [Bunjy AI](https://bunjy.vercel.app) to generate an `API_KEY` and copy the `BASE_APP_URL`.
+- You'll visit the dashboard page at [Bunjy AI](https://bunjy.vercel.app) to generate an `API_KEY` and also copy the `BASE_APP_URL`.
 - Users can log in using GitHub OAuth to authorize my core service.
 - The application connects directly to GitHub repositories via the action workflow.
-- Securely retrieves repository and pull request data
+- Securely retrieves repository and pull request data. 
+- Encrypts the repository data and sends it to the web server for processing/decrypting and then sends it to Gemini AI.
 - Displays AI reviews for your code changes directly within the PR opened, or in the dahboard [homepage](https://bunjy.vercel.app/home).
 
 ### 2. AI Analysis Process
@@ -76,9 +79,16 @@ jobs:
      - Reviewer recommendations
 
 ### 3. Data Flow
-```
-GitHub PR → Core API Service → Gemini AI → Analysis Results → Supabase DB → Web Interface
-```
+flowchart LR
+    A[GitHub PR] --> B[Core API Service]
+    B --> C[Gemini AI]
+    C --> D[Analysis Results]
+    D --> E[Supabase DB]
+    E --> F[Web Interface]
+    F --> G{User Feedback}
+    G -->|Review/Update| B
+    D -->|Detailed Insights| H[Reporting Tools]
+    H -->|Export/Share| I[External Platforms]
 
 ---
 
@@ -91,21 +101,6 @@ This application provides intelligent insights into GitHub pull requests by anal
 - Reviewer suggestions and code quality highlights.
 - Insights displayed directly in GitHub Pull Requests
 - Comprehensive analysis available in Bunjy AI dashboard
-
-## API Keys and Base App URL to use as repository secrets
-
-To use this AI app, you will need to obtain an API keys to authorize the middleware server. Here are the steps to get your API keys:
-
-**Bunjy AI API Key**: 
-   - Go to [Bunjy AI app](https://bunjy.vercel.app).
-   - On the login page, select continue with github for seamless repository setup.
-   - On the homepage, click on access tokens and generate a new API Key variable.
-   - Copy the generated token and add it to your environment secrets.
-
-**Base App Url**:
-The base URL to use the application to be added in a github action should be copied from the same page where you generate the API key above.
-
-I will soon find a way to use the action without the URL specified, making it more flexible and easier to configure.
 
 ### Apps and Packages
 
