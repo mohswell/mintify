@@ -2,13 +2,6 @@ name: 'Bunjy-AI'
 description: 'Integrate AI into your code repository with an action powered by Gemini Nano'
 author: 'mohswell'
 
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
-  checks: read
-  metadata: read
-  statuses: write
 
 inputs:
   BASE_APP_URL:
@@ -17,9 +10,17 @@ inputs:
   API_KEY:
     description: 'API key for authentication and authorization grants to Bunjy AI web resources'
     required: true
-  TOKEN:
-    description: 'Github classic access token for suthenticating the repository'
-    required: true
+  # TOKEN:
+  #   description: 'Github classic access token for authenticating the repository'
+  #   required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  checks: read
+  metadata: read
+  statuses: write
 
 runs:
   using: "composite"
@@ -28,7 +29,7 @@ runs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ inputs.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Download previous analysis data
@@ -356,6 +357,7 @@ runs:
           echo "EOF" >> $GITHUB_ENV
         env:
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           API_KEY: ${{ env.API_KEY }}
           GITHUB_BASE_REF: ${{ github.event.pull_request.base.ref }}
           GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
