@@ -50,12 +50,12 @@ jobs:
       - name: Fetch branches and Commit Histories
         shell: bash
         run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }}
-          git fetch origin ${{ github.event.pull_request.head.ref }}
+          git fetch origin ${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}
+          git fetch origin ${{ github.event.pull_request.head.ref }}:refs/remotes/origin/${{ github.event.pull_request.head.ref }}
 
           # Fetch detailed commit history between base and head branches 
           commits=$(git log --pretty=format:'%H|%s|%ae|%an|%ce|%cn|%ad' \
-                   ${{ github.event.pull_request.base.ref }}..${{ github.event.pull_request.head.ref }} | tr '\n' ';')
+                    origin/${{ github.event.pull_request.base.ref }}..origin/${{ github.event.pull_request.head.ref }} | tr '\n' ';')
           echo "COMMIT_HISTORY=$commits" >> $GITHUB_ENV
 
       - name: Set PR Environment Variables
