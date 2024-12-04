@@ -10,9 +10,10 @@ inputs:
   API_KEY:
     description: 'API key for authentication and authorization grants to Bunjy AI web resources'
     required: true
-  # TOKEN:
-  #   description: 'Github classic access token for authenticating the repository'
-  #   required: true
+  TOKEN:
+    description: 'Github classic access token for authenticating the repository'
+    default: ${{ github.token }}
+    required: false
 
 permissions:
   contents: write
@@ -25,11 +26,20 @@ permissions:
 runs:
   using: "composite"
   steps:
+      - name: Validate Inputs
+        shell: bash
+        run: |
+          # Check required inputs
+          if [[ -z "$BASE_APP_URL" || -z "$API_KEY" ]]; then
+            echo "Error: BASE_APP_URL and API_KEY are required"
+            exit 1
+          fi
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ inputs.TOKEN }}
           ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Download previous analysis data
@@ -84,7 +94,7 @@ runs:
 
       - name: Fetch PR Details
         env: 
-          GH_TOKEN: ${{ inputs.GITHUB_TOKEN }}
+          TOKEN: ${{ inputs.TOKEN }}
         shell: bash
         run: |
           # Fetch PR details, ensuring mandatory fields
@@ -247,6 +257,7 @@ runs:
           API_KEY: ${{ inputs.API_KEY }}
           PR_NUMBER: ${{ env.PR_NUMBER }}
           PR_TITLE: ${{ env.PR_TITLE }}
+          TOKEN: ${{ inputs.TOKEN }}
           PR_AUTHOR: ${{ env.PR_AUTHOR }}
           PR_URL: ${{ env.PR_URL }}
           BASE_BRANCH: ${{ env.BASE_BRANCH }}
@@ -357,7 +368,7 @@ runs:
           echo "EOF" >> $GITHUB_ENV
         env:
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TOKEN: ${{ inputs.TOKEN }}
           API_KEY: ${{ env.API_KEY }}
           GITHUB_BASE_REF: ${{ github.event.pull_request.base.ref }}
           GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -394,12 +405,12 @@ runs:
 
           # Post the comment
           curl -X POST \
-            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Authorization: Bearer ${TOKEN}" \
             -H "Accept: application/vnd.github.v3+json" \
             -d "{\"body\": $(echo "$COMMENT_BODY" | jq -sR)}" \
             "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TOKEN: ${{ inputs.TOKEN }}
           ANALYSIS_RESULTS: ${{ env.ANALYSIS_RESULTS }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -460,12 +471,12 @@ runs:
           
           # Post comment with test results
           curl -X POST \
-            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Authorization: Bearer ${TOKEN}" \
             -H "Accept: application/vnd.github.v3+json" \
             -d "{\"body\": $(echo "$comment_body" | jq -sR)}" \
             "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TOKEN: ${{ inputs.TOKEN }}
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
           API_KEY: ${{ env.API_KEY }}
           REPO: ${{ github.repository }}
