@@ -12,7 +12,7 @@ inputs:
     required: true
   TOKEN:
     description: 'Github classic access token for authenticating the repository'
-    default: ${{ github.token }}
+    default: ${{ secrets.GITHUB_TOKEN }}
     required: false
 
 permissions:
@@ -33,6 +33,9 @@ runs:
           token: ${{ inputs.TOKEN }}
           ref: ${{ github.event.pull_request.head.ref }}
 
+      - name: Install GitHub CLI
+        run: sudo apt-get install -y gh
+
       - name: Download previous analysis data
         continue-on-error: true
         uses: actions/download-artifact@v3
@@ -45,7 +48,14 @@ runs:
         run: |
           echo "BASE_APP_URL=${{ inputs.BASE_APP_URL }}" >> $GITHUB_ENV
           echo "API_KEY=${{ inputs.API_KEY }}" >> $GITHUB_ENV
-          echo "TOKEN=${{ inputs.TOKEN }}" >> $GITHUB_ENV
+
+          # Use the input token if provided, otherwise use the default GITHUB_TOKEN
+          if [ -n "${{ inputs.TOKEN }}" ]; then
+            echo "TOKEN=${{ inputs.TOKEN }}" >> $GITHUB_ENV
+          else
+            echo "TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+          fi
+
           # Create analysis data directory if it doesn't exist
           mkdir -p .analysis-data
 
@@ -111,7 +121,7 @@ runs:
 
       - name: Fetch PR Details
         env: 
-          TOKEN: ${{ env.TOKEN }}
+          GH_TOKEN: ${{ env.TOKEN }}
         shell: bash
         run: |
           # Fetch PR details, ensuring mandatory fields
