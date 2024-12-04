@@ -26,15 +26,6 @@ permissions:
 runs:
   using: "composite"
   steps:
-      - name: Validate Inputs
-        shell: bash
-        run: |
-          # Check required inputs
-          if [[ -z "$BASE_APP_URL" || -z "$API_KEY" ]]; then
-            echo "Error: BASE_APP_URL and API_KEY are required"
-            exit 1
-          fi
-
       - name: Checkout code
         uses: actions/checkout@v4
         with:
