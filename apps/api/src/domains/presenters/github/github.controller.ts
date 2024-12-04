@@ -17,28 +17,21 @@ export class GithubController {
 
     @Post('store-data')
     async storeData(@Req() req: any, @Body() prMetadata: any) {
-        console.log('Received request:', req.body);
-        console.log('Cleaned Metadata:', prMetadata);
+        this.logger.log('Received GitHub webhook data');
+        this.logger.log('Raw Request Body:', JSON.stringify(req.body, null, 2));
+        this.logger.log('Processed Metadata:', JSON.stringify(prMetadata, null, 2));
 
         try {
             const user = req.user;
             if (!user) {
+                this.logger.error('No user information found in request');
                 throw new HttpException(
                     'User information not found in request.',
                     HttpStatus.UNAUTHORIZED,
                 );
             }
 
-            console.log('User ID:', user.id);
-            const userId = user.id;
-
-            if (!prMetadata.prNumber) {
-                throw new HttpException(
-                    'Pull Request number is required',
-                    HttpStatus.BAD_REQUEST
-                );
-            }
-
+            // More detailed metadata cleaning
             const cleanedMetadata = {
                 ...prMetadata,
                 prNumber: prMetadata.prNumber || 1,
@@ -51,20 +44,29 @@ export class GithubController {
                 reviewers: prMetadata.reviewers || [],
             };
 
+            // Validate critical fields
             if (!cleanedMetadata.prNumber) {
-                console.error('prNumber is missing in metadata:', prMetadata);
+                this.logger.error('PR number is missing', cleanedMetadata);
                 throw new HttpException('Pull Request number is required', HttpStatus.BAD_REQUEST);
             }
 
-            console.log('Processed Metadata:', cleanedMetadata);
+            const result = await this.githubService.storePullRequestData(cleanedMetadata, user.id);
 
-            const result = await this.githubService.storePullRequestData(cleanedMetadata, userId);
+            this.logger.log('Successfully stored PR data', {
+                prNumber: result.prNumber,
+                prId: result.id
+            });
+
             return {
                 message: 'Pull Request data stored successfully.',
                 data: result,
             };
         } catch (error) {
-            this.logger.error('Error in storeData:', error);
+            this.logger.error('Error in storeData', {
+                error: (error as any).message,
+                stack: (error as any).stack
+            });
+
             throw new HttpException(
                 {
                     status: HttpStatus.INTERNAL_SERVER_ERROR,
