@@ -18,8 +18,8 @@ inputs:
     description: 'API key for authentication and authorization grants to Bunjy AI web resources'
     required: true
   TOKEN:
-    description: 'Github classic access token for the repository'
-    required: false
+    description: 'Github classic access token for suthenticating the repository'
+    required: true
 
 runs:
   using: "composite"
@@ -28,7 +28,7 @@ runs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ inputs.GITHUB_TOKEN }}
           ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Download previous analysis data
@@ -83,7 +83,7 @@ runs:
 
       - name: Fetch PR Details
         env: 
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ inputs.GITHUB_TOKEN }}
         shell: bash
         run: |
           # Fetch PR details, ensuring mandatory fields
