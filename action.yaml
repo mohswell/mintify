@@ -12,7 +12,6 @@ inputs:
     required: true
   TOKEN:
     description: 'Github classic access token for authenticating the repository'
-    default: ${{ secrets.GITHUB_TOKEN }}
     required: false
 
 permissions:
@@ -33,8 +32,9 @@ runs:
           token: ${{ inputs.TOKEN }}
           ref: ${{ github.event.pull_request.head.ref }}
 
-      - name: Install GitHub CLI
-        run: sudo apt-get install -y gh
+      # - name: Install GitHub CLI
+      #   shell: bash
+      #   run: sudo apt-get install -y gh
 
       - name: Download previous analysis data
         continue-on-error: true
@@ -81,7 +81,7 @@ runs:
                   origin/${{ github.event.pull_request.base.ref }}..origin/${{ github.event.pull_request.head.ref }} | tr '\n' ';')
           echo "COMMIT_HISTORY=$commits" >> $GITHUB_ENV
 
-      # TODO: MODISY THIS IF THE ABOVE STEP KEEPS FAILING, THIS IS SMY ORIGINAL IMPLEMENTATION
+      # TODO: MODIFY THIS IF THE ABOVE STEP KEEPS FAILING, THIS IS SMY ORIGINAL IMPLEMENTATION
       # - name: Fetch branches
       #   shell: bash
       #   run: |
