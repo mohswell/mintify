@@ -111,7 +111,7 @@ runs:
 
       - name: Fetch PR Details
         env: 
-          TOKEN: ${{ inputs.TOKEN }}
+          TOKEN: ${{ env.TOKEN }}
         shell: bash
         run: |
           # Fetch PR details, ensuring mandatory fields
@@ -385,7 +385,7 @@ runs:
           echo "EOF" >> $GITHUB_ENV
         env:
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
-          TOKEN: ${{ inputs.TOKEN }}
+          TOKEN: ${{ env.TOKEN }}
           API_KEY: ${{ env.API_KEY }}
           GITHUB_BASE_REF: ${{ github.event.pull_request.base.ref }}
           GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -427,7 +427,7 @@ runs:
             -d "{\"body\": $(echo "$COMMENT_BODY" | jq -sR)}" \
             "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
         env:
-          TOKEN: ${{ inputs.TOKEN }}
+          TOKEN: ${{ env.TOKEN }}
           ANALYSIS_RESULTS: ${{ env.ANALYSIS_RESULTS }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -493,7 +493,7 @@ runs:
             -d "{\"body\": $(echo "$comment_body" | jq -sR)}" \
             "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
         env:
-          TOKEN: ${{ inputs.TOKEN }}
+          TOKEN: ${{ env.TOKEN }}
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
           API_KEY: ${{ env.API_KEY }}
           REPO: ${{ github.repository }}
