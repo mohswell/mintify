@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 type Data = {
     name: string;
 };
-
+//Ping Pong Test
 export default function handler(
     req: NextApiRequest,
     res: NextApiResponse<Data>,
