@@ -25,12 +25,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-      
-      - name: Install Turbo command line tool
-        run: npm install -g @turbo/turbo-cli
 
       - name: Run ESLint
-        run: npx turbo run lint
+        run: npm run lint
 
       - name: Notify Admin on Lint Failure
         if: failure()
@@ -93,7 +90,7 @@ jobs:
         run: npm ci
 
       - name: Build the monolithic application
-        run: npx turbo run build
+        run: npm run build
 
       # - name: Run Tests
       #   run: npm test
