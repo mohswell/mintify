@@ -1,12 +1,13 @@
 name: AI
 on:
   workflow_dispatch:
-  pull_request:
-    types: [opened, synchronize, reopened]
-  pull_request_review:
-    types: [submitted]
-  issue_comment:
-    types: [created]
+  # The AI ACTION is itself triggered by the action in the action.yml
+  # pull_request:
+  #   types: [opened, synchronize, reopened]
+  # pull_request_review:
+  #   types: [submitted]
+  # issue_comment:
+  #   types: [created]
 
 permissions:
   pull-requests: write
@@ -22,9 +23,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}   
           ref: ${{ github.event.pull_request.head.ref }}
-
+  
       - name: Download previous analysis data
         continue-on-error: true
         uses: actions/download-artifact@v3
