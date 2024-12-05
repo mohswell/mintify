@@ -115,6 +115,27 @@ runs:
           GH_TOKEN: ${{ env.TOKEN }}
         shell: bash
         run: |
+          # Debug: Print out available environment variables
+          echo "Debugging PR Number Retrieval"
+          echo "GITHUB_EVENT_PATH: $GITHUB_EVENT_PATH"
+          echo "GITHUB_REPOSITORY: $GITHUB_REPOSITORY"
+          
+          # Extract PR number directly from the GitHub event file
+          PR_NUMBER=$(jq -r '.pull_request.number // empty' "$GITHUB_EVENT_PATH")
+          
+          # Fallback method if PR number is not found
+          if [ -z "$PR_NUMBER" ]; then
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+          fi
+
+          # Validate PR Number
+          if [ -z "$PR_NUMBER" ]; then
+            echo "Error: Unable to determine PR Number"
+            exit 1
+          fi
+          
+          echo "Detected PR Number: $PR_NUMBER"
+
           # Fetch PR details, ensuring mandatory fields
           pr_details=$(gh api repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER})
           
@@ -123,16 +144,18 @@ runs:
             echo "Error: Unable to fetch PR details"
             exit 1
           fi
-          
-          echo "PR_DRAFT=$(echo $pr_details | jq -r .draft)" >> $GITHUB_ENV
-          echo "PR_LABELS=$(echo $pr_details | jq -r '.labels | map(.name) | join(",")')" >> $GITHUB_ENV
-          echo "PR_REVIEWERS=$(echo $pr_details | jq -r '.requested_reviewers | map(.login) | join(",")')" >> $GITHUB_ENV
-          echo "PR_ADDITIONS=$(echo $pr_details | jq -r .additions)" >> $GITHUB_ENV
-          echo "PR_DELETIONS=$(echo $pr_details | jq -r .deletions)" >> $GITHUB_ENV
-          echo "PR_CHANGED_FILES=$(echo $pr_details | jq -r .changed_files)" >> $GITHUB_ENV
-          echo "PR_MERGEABLE=$(echo $pr_details | jq -r .mergeable)" >> $GITHUB_ENV
-          echo "PR_DESCRIPTION=$(echo $pr_details | jq -R .body)" >> $GITHUB_ENV
-          echo "PR_AUTHOR_USERNAME=$(echo $pr_details | jq -r .user.login)" >> $GITHUB_ENV
+
+          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
+          echo "PR_TITLE=$(echo $pr_details | jq -r '.title // empty')" >> $GITHUB_ENV
+          echo "PR_DRAFT=$(echo $pr_details | jq -r '.draft // false')" >> $GITHUB_ENV
+          echo "PR_LABELS=$(echo $pr_details | jq -r '.labels | map(.name) | join(",") // empty')" >> $GITHUB_ENV
+          echo "PR_REVIEWERS=$(echo $pr_details | jq -r '.requested_reviewers | map(.login) | join(",") // empty')" >> $GITHUB_ENV
+          echo "PR_ADDITIONS=$(echo $pr_details | jq -r '.additions // 0')" >> $GITHUB_ENV
+          echo "PR_DELETIONS=$(echo $pr_details | jq -r '.deletions // 0')" >> $GITHUB_ENV
+          echo "PR_CHANGED_FILES=$(echo $pr_details | jq -r '.changed_files // 0')" >> $GITHUB_ENV
+          echo "PR_MERGEABLE=$(echo $pr_details | jq -r '.mergeable // false')" >> $GITHUB_ENV
+          echo "PR_DESCRIPTION=$(echo $pr_details | jq -r '.body // empty')" >> $GITHUB_ENV
+          echo "PR_AUTHOR_USERNAME=$(echo $pr_details | jq -r '.user.login // empty')" >> $GITHUB_ENV
           echo "PR_AUTHOR_AVATAR=$(echo $pr_details | jq -r .user.avatar_url)" >> $GITHUB_ENV
           echo "PR_BASE_REPO=$(echo $pr_details | jq -r .base.repo.full_name)" >> $GITHUB_ENV
           echo "PR_HEAD_REPO=$(echo $pr_details | jq -r .head.repo.full_name)" >> $GITHUB_ENV
@@ -319,7 +342,7 @@ runs:
 
           for file in $changed_files; do
             # Check file extensions to analyze
-            allowed_extensions=("js" "ts" "yml" "md" "py" "dart" "tsx" "java" "css" "sh" "env" "html" "json" "xml" "php" "rb" "go" "swift" "c" "cpp" "h" "hpp" "cs" "vb" "fs" "scala" "kt" "tf" "groovy" "rs" "sql")
+            allowed_extensions=("js" "ts" "yml" "yaml" "md" "py" "dart" "tsx" "java" "css" "sh" "env" "html" "json" "xml" "php" "rb" "go" "swift" "c" "cpp" "h" "hpp" "cs" "vb" "fs" "scala" "kt" "tf" "groovy" "rs" "sql")
             file_extension="${file##*.}"
 
 

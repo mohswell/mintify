@@ -1,0 +1,115 @@
+name: Enforce Strict Code Review
+
+on:
+  # push:
+  #   branches:
+  #     - 'main'
+  #     - 'master'
+  pull_request:
+    branches:
+      - '*'
+  pull_request_review:
+    types: [submitted, edited]
+
+permissions:
+  issues: write
+  contents: write
+  pull-requests: write
+  checks: read
+  statuses: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+  
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Notify Admin on Lint Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Lint Failure in Pull Request',
+              body: `Lint check failed in PR #${context.issue.number}. Please review and fix linting issues.`,
+              assignees: ['${{ github.event.pull_request.user.login }}']
+            })
+
+  security_scan:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SYNK_TOKEN }}
+        with:
+          command: monitor
+        continue-on-error: true
+
+      - name: Run Dependency Review
+        uses: actions/dependency-review-action@v4
+        continue-on-error: true
+
+  ai_code_review:
+    needs: [lint, security_scan]
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: AI Code Review
+        uses: mohswell/mintify@v2.0
+        with:
+          BASE_APP_URL: ${{secrets.BASE_APP_URL}}
+          API_KEY: ${{secrets.API_KEY}}
+
+  # build_test:
+  #   needs: [security_scan]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+
+  #     - name: Install dependencies
+  #       run: npm ci
+
+  #     - name: Build the monolithic application
+  #       run: npm run build
+
+  #     # - name: Run Tests
+  #     #   run: npm test
+
+  pr_validation:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: [lint, security_scan, ai_code_review]
+    steps:
+      - name: PR Validation Check
+        run: |
+          echo "All checks passed successfully!"

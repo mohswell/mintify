@@ -10,7 +10,8 @@ module.exports = {
 
     // Format other files with Prettier
     '**/*.{json,md,yml,yaml,css,scss}': (filenames) =>
-        `prettier --write ${filenames.join(' ')}`,
+        filenames.filter(filename => fs.existsSync(filename))
+            .map(filename => `prettier --write ${filename}`),
 
     // Run tests related to changed files
     '**/*.{js,jsx,ts,tsx}': (filenames) => {
