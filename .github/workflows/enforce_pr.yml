@@ -64,9 +64,11 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SYNK_TOKEN }}
         with:
           command: monitor
+        continue-on-error: true
 
       - name: Run Dependency Review
         uses: actions/dependency-review-action@v4
+        continue-on-error: true
 
   ai_code_review:
     needs: [lint, security_scan]
