@@ -52,11 +52,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
           cache: 'npm'
 
       - name: Restore dependencies
@@ -124,9 +119,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Install dependencies
-        run: npm ci
 
       - name: Restore dependencies
         uses: actions/cache@v4
