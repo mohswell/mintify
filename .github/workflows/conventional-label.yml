@@ -1,25 +1,30 @@
 # Warning, do not check out untrusted code with
 # the pull_request_target event.
 on:
-    pull_request_target:
-      types: [ opened, edited ]
-  
-  permissions:
-    pull-requests: write
-    statuses: write
-  
-  name: conventional-release-labels
-  jobs:
-    label:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: bcoe/conventional-release-labels@v1
-          with:
-            ignored_types: |
-              [
-                "style",
-                "refactor",
-                "test",
-                "ci",
-                "chore"
-              ]
+  pull_request_target:
+    types: [opened, edited]
+
+permissions:
+  pull-requests: write
+  statuses: write
+
+name: conventional-release-labels
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Apply Conventional Release Labels
+        uses: bcoe/conventional-release-labels@v1
+        with:
+          ignored_types: |
+            [
+              "style",
+              "refactor",
+              "test",
+              "ci",
+              "chore"
+            ]
