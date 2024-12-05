@@ -11,6 +11,13 @@ on:
   pull_request_review:
     types: [submitted, edited]
 
+permissions:
+  issues: write
+  contents: write
+  pull-requests: write
+  checks: read
+  statuses: write
+
 jobs:
   lint:
     runs-on: ubuntu-latest
