@@ -66,6 +66,7 @@ runs:
           echo "BASE_APP_URL=${{ inputs.BASE_APP_URL }}" >> $GITHUB_ENV
           echo "API_KEY=${{ inputs.API_KEY }}" >> $GITHUB_ENV
           echo "TOKEN=${{ inputs.TOKEN }}" >> $GITHUB_ENV
+          echo "TEST_GENERATION=${{ inputs.GENERATE_TESTS }}" >> $GITHUB_ENV
 
           # Create analysis data directory if it doesn't exist
           mkdir -p .analysis-data
@@ -129,9 +130,9 @@ runs:
           echo "PR_URL=${{ github.event.pull_request.html_url }}" >> $GITHUB_ENV
           echo "BASE_BRANCH=${{ github.event.pull_request.base.ref }}" >> $GITHUB_ENV
           echo "HEAD_BRANCH=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
-
+                    
       - name: Fetch PR Details
-        env: 
+        env:
           GH_TOKEN: ${{ env.TOKEN }}
         shell: bash
         run: |
@@ -147,7 +148,7 @@ runs:
           if [ -z "$PR_NUMBER" ]; then
             PR_NUMBER="${{ github.event.pull_request.number }}"
           fi
-
+          
           # Validate PR Number
           if [ -z "$PR_NUMBER" ]; then
             echo "Error: Unable to determine PR Number"
@@ -155,7 +156,7 @@ runs:
           fi
           
           echo "Detected PR Number: $PR_NUMBER"
-
+          
           # Fetch PR details, ensuring mandatory fields
           pr_details=$(gh api repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER})
           
@@ -164,9 +165,13 @@ runs:
             echo "Error: Unable to fetch PR details"
             exit 1
           fi
-
+          
+          # Safely extract and encode description to handle multiline and special characters
+          PR_DESCRIPTION=$(echo $pr_details | jq -r '.body // empty' | base64 -w 0)
+          
+          # Set environment variables with careful encoding
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
-          echo "PR_TITLE=$(echo $pr_details | jq -r '.title // empty')" >> $GITHUB_ENV
+          echo "PR_TITLE=$(echo $pr_details | jq -r '.title // empty' | base64 -w 0)" >> $GITHUB_ENV
           echo "PR_DRAFT=$(echo $pr_details | jq -r '.draft // false')" >> $GITHUB_ENV
           echo "PR_LABELS=$(echo $pr_details | jq -r '.labels | map(.name) | join(",") // empty')" >> $GITHUB_ENV
           echo "PR_REVIEWERS=$(echo $pr_details | jq -r '.requested_reviewers | map(.login) | join(",") // empty')" >> $GITHUB_ENV
@@ -174,7 +179,7 @@ runs:
           echo "PR_DELETIONS=$(echo $pr_details | jq -r '.deletions // 0')" >> $GITHUB_ENV
           echo "PR_CHANGED_FILES=$(echo $pr_details | jq -r '.changed_files // 0')" >> $GITHUB_ENV
           echo "PR_MERGEABLE=$(echo $pr_details | jq -r '.mergeable // false')" >> $GITHUB_ENV
-          echo "PR_DESCRIPTION=$(echo $pr_details | jq -r '.body // empty')" >> $GITHUB_ENV
+          echo "PR_DESCRIPTION=$PR_DESCRIPTION" >> $GITHUB_ENV
           echo "PR_AUTHOR_USERNAME=$(echo $pr_details | jq -r '.user.login // empty')" >> $GITHUB_ENV
           echo "PR_AUTHOR_AVATAR=$(echo $pr_details | jq -r .user.avatar_url)" >> $GITHUB_ENV
           echo "PR_BASE_REPO=$(echo $pr_details | jq -r .base.repo.full_name)" >> $GITHUB_ENV
@@ -184,7 +189,7 @@ runs:
           echo "PR_UPDATED_AT=$(echo $pr_details | jq -r .updated_at)" >> $GITHUB_ENV
           echo "PR_CLOSED_AT=$(echo $pr_details | jq -r .closed_at)" >> $GITHUB_ENV
           echo "PR_MERGED_AT=$(echo $pr_details | jq -r .merged_at)" >> $GITHUB_ENV
-      
+
       - name: Save Pull Request Metadata and user information to server
         shell: bash
         run: |
