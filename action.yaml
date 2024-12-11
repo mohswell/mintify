@@ -1,7 +1,6 @@
-name: 'Bunjy-AI'
-description: 'Integrate AI into your code repository with an action powered by Gemini Nano'
+name: 'Bunjy AI Code Review'
+description: 'Integrate AI into your code repository to analyze file changes within a Pull Request using Gemini Nano'
 author: 'mohswell'
-
 
 inputs:
   BASE_APP_URL:
@@ -14,6 +13,10 @@ inputs:
     description: 'Github classic access token for authenticating the repository'
     default: ${{ github.token }}
     required: false
+  GENERATE_TESTS:
+    description: 'Automatically generate unit tests for changed files'
+    required: false
+    default: 'false'
 
 permissions:
   contents: write
@@ -34,12 +37,29 @@ runs:
           ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Download previous analysis data
+        id: download-artifact
         continue-on-error: true
         uses: actions/download-artifact@v3
         with:
           name: analysis-data
           path: .analysis-data
 
+      - name: Initialize analysis data
+        shell: bash
+        run: |
+          mkdir -p .analysis-data
+          
+          # Initialize last analyzed commit if not exists or if download failed
+          if [ ! -f .analysis-data/last_analyzed_commit ] || [ ! -s .analysis-data/last_analyzed_commit ]; then
+            # Use the base branch commit as starting point for first analysis
+            git rev-parse ${{ github.event.pull_request.base.sha }} > .analysis-data/last_analyzed_commit
+          fi
+          
+          # Initialize analyzed files tracking if not exists
+          touch .analysis-data/analyzed_files
+          
+          echo "LAST_ANALYZED_COMMIT=$(cat .analysis-data/last_analyzed_commit)" >> $GITHUB_ENV
+    
       - name: Set up environment
         shell: bash
         run: |
@@ -330,26 +350,36 @@ runs:
           echo "$changed_files"
 
           # Tracked and analyzed files
-          analyzed_files=()
-          previous_analyzed_files=()
+          # analyzed_files=()
+          # previous_analyzed_files=()
           
-          # Load previously analyzed files if exists
+          # Load previously analyzed files
+          declare -A analyzed_files_map
           if [ -f .analysis-data/analyzed_files ]; then
-            mapfile -t previous_analyzed_files < .analysis-data/analyzed_files
+            while IFS= read -r file; do
+              analyzed_files_map["$file"]=1
+            done < .analysis-data/analyzed_files
           fi
 
           analysis_results=""
+          new_analyzed_files=()
 
           for file in $changed_files; do
+            # Skip if file was already analyzed
+            if [[ -n "${analyzed_files_map[$file]}" ]]; then
+              echo "Skipping already analyzed file: $file"
+              continue
+            fi
+
             # Check file extensions to analyze
-            allowed_extensions=("js" "ts" "yml" "yaml" "md" "py" "dart" "tsx" "java" "css" "sh" "env" "html" "json" "xml" "php" "rb" "go" "swift" "c" "cpp" "h" "hpp" "cs" "vb" "fs" "scala" "kt" "tf" "groovy" "rs" "sql")
+            allowed_extensions=("js" "ts" "yml" "yaml" "md" "py" "dart" "tsx" "jsx" "vue" "java" "css" "sh" "env" "html" "json" "xml" "php" "rb" "go" "swift" "c" "cpp" "h" "hpp" "cs" "vb" "fs" "scala" "kt" "tf" "groovy" "rs" "sql")
             file_extension="${file##*.}"
 
 
-            # Check if file is supported and not previously analyzed
-            if [[ " ${allowed_extensions[@]} " =~ " ${file_extension} " ]] && 
-               [[ ! " ${previous_analyzed_files[@]} " =~ " ${file} " ]]; then
-              
+            # Check if file is supported and not previously analyzed --TODO: Uncomment this later if the second if statement fails
+            # if [[ " ${allowed_extensions[@]} " =~ " ${file_extension} " ]] && 
+            #    [[ ! " ${previous_analyzed_files[@]} " =~ " ${file} " ]]; then
+            if [[ " ${allowed_extensions[@]} " =~ " ${file_extension} " ]]; then
               echo "Analyzing file: $file"
               
               # Get diff for this specific file
@@ -399,14 +429,24 @@ runs:
           # Update last analyzed commit
           echo "${current_commit}" > .analysis-data/last_analyzed_commit
           
-          # Combine and deduplicate analyzed files
-          unique_analyzed_files=($(printf "%s\n" "${previous_analyzed_files[@]}" "${analyzed_files[@]}" | sort -u))
-          printf "%s\n" "${unique_analyzed_files[@]}" > .analysis-data/analyzed_files
+          # Combine and deduplicate analyzed files --TODO: Uncomment this out when the workflow fails, my original implementation
+          # unique_analyzed_files=($(printf "%s\n" "${previous_analyzed_files[@]}" "${analyzed_files[@]}" | sort -u))
+          # printf "%s\n" "${unique_analyzed_files[@]}" > .analysis-data/analyzed_files
+
+          # Append new analyzed files to existing list
+          for new_file in "${new_analyzed_files[@]}"; do
+            echo "$new_file" >> .analysis-data/analyzed_files
+          done
           
           # Save results for comment
           echo "ANALYSIS_RESULTS<<EOF" >> $GITHUB_ENV
           echo -e "$analysis_results" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
+
+          # If auto-generate tests is enabled, set environment variable
+          if [[ "$GENERATE_TESTS" == "true" ]]; then
+            echo "GENERATE_TESTS=true" >> $GITHUB_ENV
+          fi
         env:
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
           TOKEN: ${{ env.TOKEN }}
@@ -415,6 +455,7 @@ runs:
           GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           LAST_ANALYZED_COMMIT: ${{ env.LAST_ANALYZED_COMMIT }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          GENERATE_TESTS: ${{ inputs.GENERATE_TESTS }}
 
       - name: Save analysis data
         uses: actions/upload-artifact@v3
@@ -428,13 +469,21 @@ runs:
         shell: bash
         run: |          
           echo "Posting comment on PR..."
+          
+          # Function to clean up AI analysis results
+          clean_analysis_results() {
+            local results="$1"
+            # Remove JSON formatting, quotes, and parse out actual content
+            echo "$results" | sed -E 's/.*"formattedResponse":"?//; s/"[[:space:]]*}$//; s/\\n/\n/g; s/\\\"/"/g'
+          }
+
+          # Clean and process analysis results
+          CLEANED_ANALYSIS_RESULTS=$(clean_analysis_results "${ANALYSIS_RESULTS}")
 
           COMMENT_BODY=$(cat << EOF
           # Code Analysis Report
 
-          ${ANALYSIS_RESULTS}
-
-          ---
+          ${CLEANED_ANALYSIS_RESULTS}
 
           ## Test Generation:
           After approving, you can:
@@ -457,14 +506,14 @@ runs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           RUN_ID: ${{ github.run_id }}
 
-      - name: Process Feedback
-        if: github.event_name == 'issue_comment' && github.event.comment.body == '/generate-tests'
+      - name: Generate Tests
+        if: env.GENERATE_TESTS == 'true'
         shell: bash
         run: |                
-          echo "Generating tests..."
+          echo "Automatically generating tests..."
           test_results=""
           
-          # Read the analyzed files
+          # Read the newly analyzed files
           if [ -f ".analysis-data/analyzed_files" ]; then
               while IFS= read -r file; do
                   # Focus on TypeScript/JavaScript files
@@ -500,9 +549,11 @@ runs:
           
           # Post test results or a message if no tests generated
           if [ -n "$test_results" ]; then
-              comment_body="### 🧪 Generated Tests
+            # Remove the JSON formatting, quotes, and unnecessary text
+            cleaned_results=$(echo "$test_results" | sed -E 's/^.*\{"formattedResponse":"\s*//; s/"\s*}$//; s/---$//')
+              comment_body="### 🧪 Automatically Generated Tests
 
-          ${test_results}
+          ${cleaned_results}
 
           *Review the generated tests and add them to your test suite if they look good.*"
           else
@@ -521,7 +572,73 @@ runs:
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
           API_KEY: ${{ env.API_KEY }}
           REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.issue.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
+      # - name: Process Feedback
+      #   if: github.event_name == 'issue_comment' && github.event.comment.body == '/generate-tests'
+      #   shell: bash
+      #   run: |                
+      #     echo "Generating tests..."
+      #     test_results=""
+          
+      #     # Read the analyzed files
+      #     if [ -f ".analysis-data/analyzed_files" ]; then
+      #         while IFS= read -r file; do
+      #             # Focus on TypeScript/JavaScript files
+      #             if [[ "$file" =~ \.(ts|js|tsx|jsx)$ ]]; then
+      #                 echo "Generating tests for $file"
+                      
+      #                 if [ -f "$file" ]; then
+      #                     file_content=$(cat "$file")
+                          
+      #                     # Format content as markdown
+      #                     markdown_content="### File: \`$file\`\n\n\`\`\`typescript\n${file_content}\n\`\`\`"
+      #                     escaped_markdown=$(echo "$markdown_content" | jq -sR .)
+                          
+      #                     # Send request to test generation service
+      #                     test_response=$(curl -s -X POST "${BASE_APP_URL}/gemini/generate-tests" \
+      #                         -H "Authorization: Bearer ${API_KEY}" \
+      #                         -H "Content-Type: application/json" \
+      #                         -d "{\"code\": ${escaped_markdown}}")
+                          
+      #                     if [ -n "$test_response" ]; then
+      #                         test_results="${test_results}
+      #     ## Tests for \`$file\`
+
+      #     ${test_response}
+
+      #     ---
+      #     "
+      #                     fi
+      #                 fi
+      #             fi
+      #         done < ".analysis-data/analyzed_files"
+      #     fi
+          
+      #     # Post test results or a message if no tests generated
+      #     if [ -n "$test_results" ]; then
+      #         comment_body="### 🧪 Generated Tests
+
+      #     ${test_results}
+
+      #     *Review the generated tests and add them to your test suite if they look good.*"
+      #     else
+      #         comment_body="### ⚠️ No Tests Generated
+      #     No eligible files found for test generation or test generation failed."
+      #     fi
+          
+      #     # Post comment with test results
+      #     curl -X POST \
+      #       -H "Authorization: Bearer ${TOKEN}" \
+      #       -H "Accept: application/vnd.github.v3+json" \
+      #       -d "{\"body\": $(echo "$comment_body" | jq -sR)}" \
+      #       "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
+      #   env:
+      #     TOKEN: ${{ env.TOKEN }}
+      #     BASE_APP_URL: ${{ env.BASE_APP_URL }}
+      #     API_KEY: ${{ env.API_KEY }}
+      #     REPO: ${{ github.repository }}
+      #     PR_NUMBER: ${{ github.event.issue.number }}
 
 branding:
   icon: 'activity'
