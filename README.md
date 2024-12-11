@@ -1,6 +1,13 @@
 # AI-Integrated Code Pipeline 
 
-This is an innovative AI-powered analysis tool designed to enhance code review and pull request management using cutting-edge AI technologies.
+This is an AI powered action designed to enhance code review and analyse file changes within a pull request by leveraging Gemini Nano to evaluate code quality, identify potential risks, suggest improvements, and generate tests automatically. 
+It integrates seamlessly with your GitHub workflows to provide insightful feedback directly within your pull requests.
+
+![Screenshot (275)](https://github.com/user-attachments/assets/ef704379-5f7f-4a54-ba75-446e42dfe07e)
+
+---
+
+![Screenshot (301)](https://github.com/user-attachments/assets/d15fa6e0-4934-4a30-a3ad-9298a9fec654)
 
 ## Usage
 
@@ -15,6 +22,8 @@ This is an innovative AI-powered analysis tool designed to enhance code review a
 3. On the homepage sidebar click and navigate to "Access Tokens"
 4. Generate a new API Key and Base app url by clicking the generate button
 5. Copy your unique `API_KEY ` and `BASE_APP_URL`
+
+![image](https://github.com/user-attachments/assets/54b0f3de-187c-4724-8bf5-915409e54dc1)
 
 ### Step 2: Configure Repository Secrets
 In your GitHub repository:
@@ -48,11 +57,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Bunjy-AI              
-        uses: mohswell/mintify@v2.0
+      - name: Bunjy AI Code Review              
+        uses: mohswell/mintify@v2.1
         with:
           BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
           API_KEY: ${{ secrets.API_KEY }}
+          GENERATE_TESTS: 'true' # Optional: defaults to 'false' if not provided
+```
+
+To enable automatic generation of unit tests for changed files, set the `GENERATE_TESTS` input to 'true' in your workflow file:
+
+To cover fork branches and also to disable automatic test generation, you can modify the `GENERATE_TESTS` value to 'false'. use this template to set up the workflow:
+
+```yaml
+name: AI Code Review
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  ai:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Bunjy AI Code Review              
+        uses: mohswell/mintify@v2.1
+        with:
+          BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+          GENERATE_TESTS: 'false'
 ```
 
 ## How It Works: Technical Architecture
