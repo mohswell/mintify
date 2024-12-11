@@ -514,64 +514,68 @@ runs:
       - name: Generate Tests
         if: env.GENERATE_TESTS == 'true'
         shell: bash
-        run: |                
+        run: |
           echo "Automatically generating tests..."
           test_results=""
           
-          # Read the newly analyzed files
+          # Read the analyzed files
           if [ -f ".analysis-data/analyzed_files" ]; then
-              while IFS= read -r file; do
-                  # Focus on TypeScript/JavaScript files
-                  if [[ "$file" =~ \.(ts|js|tsx|jsx)$ ]]; then
-                      echo "Generating tests for $file"
-                      
-                      if [ -f "$file" ]; then
-                          file_content=$(cat "$file")
-                          
-                          # Format content as markdown
-                          markdown_content="### File: \`$file\`\n\n\`\`\`typescript\n${file_content}\n\`\`\`"
-                          escaped_markdown=$(echo "$markdown_content" | jq -sR .)
-                          
-                          # Send request to test generation service
-                          test_response=$(curl -s -X POST "${BASE_APP_URL}/gemini/generate-tests" \
-                              -H "Authorization: Bearer ${API_KEY}" \
-                              -H "Content-Type: application/json" \
-                              -d "{\"code\": ${escaped_markdown}}")
-                          
-                          if [ -n "$test_response" ]; then
-                              test_results="${test_results}
-          ## Tests for \`$file\`
-
-          ${test_response}
-
-          ---
-          "
-                          fi
-                      fi
+            while IFS= read -r file; do
+              if [[ "$file" =~ \.(ts|js|tsx|jsx)$ ]]; then
+                echo "Generating tests for $file"
+                
+                if [ -f "$file" ]; then
+                  file_content=$(cat "$file")
+                  markdown_content="### File: \`$file\`\n\n\`\`\`typescript\n${file_content}\n\`\`\`"
+                  escaped_markdown=$(echo "$markdown_content" | jq -sR .)
+                  
+                  # Send request to the test generation service
+                  echo "Sending request to ${BASE_APP_URL}/gemini/generate-tests..."
+                  response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "${BASE_APP_URL}/gemini/generate-tests" \
+                    -H "Authorization: Bearer ${API_KEY}" \
+                    -H "Content-Type: application/json" \
+                    -d "{\"code\": ${escaped_markdown}}")
+                  
+                  http_status=$(echo "$response" | grep "HTTP_STATUS" | cut -d':' -f2)
+                  raw_response=$(echo "$response" | sed -E 's/HTTP_STATUS:[0-9]+//')
+                  
+                  # Parse and clean the response if status is 200
+                  if [ "$http_status" -eq 200 ] && [ -n "$raw_response" ]; then
+                    echo "Processing response for $file"
+                    
+                    # Clean the response
+                    formatted_response=$(echo "$raw_response" | sed -E 's/.*"formattedResponse":"?//; s/"[[:space:]]*}$//; s/\\n/\n/g; s/\\\"/"/g')
+                    test_results="${test_results}\n## Tests for \`$file\`\n${formatted_response}\n---"
+                  else
+                    echo "Error: Request failed for $file with status $http_status"
                   fi
-              done < ".analysis-data/analyzed_files"
+                else
+                  echo "File $file does not exist."
+                fi
+              fi
+            done < ".analysis-data/analyzed_files"
           fi
-          
-          # Post test results or a message if no tests generated
+
+          # Post the comment only if there are results
           if [ -n "$test_results" ]; then
-            # Remove the JSON formatting, quotes, and unnecessary text
-            cleaned_results=$(echo "$test_results" | sed -E 's/^.*\{"formattedResponse":"\s*//; s/"\s*}$//; s/---$//')
-              comment_body="### 🧪 Automatically Generated Tests
+            echo "Tests generated successfully. Posting results to GitHub..."
+            comment_body=$(cat << EOF
+            # 🧪 Automatically Generated Tests
 
-          ${cleaned_results}
+            ${test_results}
 
-          *Review the generated tests and add them to your test suite if they look good.*"
+            *Review the generated tests and integrate them into your suite.*
+            EOF
+            )
+            
+            curl -X POST \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -d "{\"body\": $(echo "$comment_body" | jq -sR)}" \
+              "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
           else
-              comment_body="### ⚠️ No Tests Generated
-          No eligible files found for test generation or test generation failed."
+            echo "No tests were generated. Skipping comment posting."
           fi
-          
-          # Post comment with test results
-          curl -X POST \
-            -H "Authorization: Bearer ${TOKEN}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            -d "{\"body\": $(echo "$comment_body" | jq -sR)}" \
-            "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
         env:
           TOKEN: ${{ env.TOKEN }}
           BASE_APP_URL: ${{ env.BASE_APP_URL }}
