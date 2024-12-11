@@ -5,7 +5,9 @@ import { createContent } from './helpers/content.helper';
 import { GEMINI_PRO_MODEL, GEMINI_PRO_VISION_MODEL } from './gemini.constant';
 import { AnalyzeImage } from '~gemini/domain/interface/analyze-images.interface';
 import { ContentFormatterService } from './helpers/content.formatter';
-import { TestFormatterService } from './helpers/test-formatter.helper';
+//import { TestFormatterService } from './helpers/test-formatter.helper';
+import { TestExtensionService } from '~gemini/traits/extensions/extensions.service';
+
 @Injectable()
 export class GeminiService {
   private readonly logger = new Logger(GeminiService.name);
@@ -14,8 +16,9 @@ export class GeminiService {
     @Inject(GEMINI_PRO_MODEL) private readonly proModel: GenerativeModel,
     @Inject(GEMINI_PRO_VISION_MODEL) private readonly proVisionModel: GenerativeModel,
     private readonly contentFormatter: ContentFormatterService,
-    private readonly testFormatter: TestFormatterService,
-  ) { }
+    //private readonly testFormatter: TestFormatterService,
+    private readonly testExtensionService: TestExtensionService,
+  ) {}
 
   async generateText(prompt: string): Promise<GenAiResponse> {
     return this.withRetry(async () => {
@@ -78,7 +81,7 @@ export class GeminiService {
 
       return {
         //totalTokens,
-        formattedResponse
+        formattedResponse,
       };
     });
   }
@@ -93,7 +96,7 @@ export class GeminiService {
       const rawText = await response.text();
 
       // Minimal formatting compared to analyzeCode
-      const simplifiedResponse = this.contentFormatter.simplifyResponse(rawText); // Assuming `simplifyResponse` is a lighter formatting method.
+      const simplifiedResponse = this.contentFormatter.formatResponse(rawText);
       this.logger.debug('Content generation completed successfully');
 
       return {
@@ -103,10 +106,10 @@ export class GeminiService {
     });
   }
 
-
-  async generateTests(code: string): Promise<GenAiResponse> {
+  // async generateTests(code: string): Promise<GenAiResponse> { //TODO: change the return type to GenAiResponse later to add types
+  async generateTests(code: string): Promise<any> {
     return this.withRetry(async () => {
-      const contents = this.testFormatter.createContent(code);
+      const contents = this.testExtensionService.createContent(code);
       const { totalTokens } = await this.proModel.countTokens({ contents });
       this.logger.debug(`Token count for test generation: ${totalTokens}`);
 
@@ -114,12 +117,12 @@ export class GeminiService {
       const response = await result.response;
       const text = response.text();
 
-      const formattedResponse = this.testFormatter.formatResponse(text);
+      const formattedResponse = this.testExtensionService.formatResponse(text);
       this.logger.debug('Test generation completed successfully');
 
       return {
-        totalTokens,
-        text: formattedResponse,
+        //totalTokens,
+        formattedResponse,
       };
     });
   }
@@ -135,12 +138,13 @@ export class GeminiService {
         }
 
         // Check if it's a rate limit or temporary error
-        if (error instanceof Error &&
-          (error.message.includes('temporarily unavailable') ||
-            error.message.includes('rate limit'))) {
+        if (
+          error instanceof Error &&
+          (error.message.includes('temporarily unavailable') || error.message.includes('rate limit'))
+        ) {
           const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
           this.logger.warn(`Attempt ${attempt} failed, retrying in ${delay}ms`);
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
           continue;
         }
 
