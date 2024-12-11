@@ -69,66 +69,76 @@ export class ContentFormatterService {
     const codeChanges = this.extractCodeChanges(text);
     const { metrics, securityIssues, refactoringOpportunities } = analysis;
 
-    return `Perform a comprehensive code review of the following changes, considering these detailed metrics and findings:
-
-CODE METRICS:
-- Cyclomatic Complexity: ${metrics.complexity}
-- Lines of Code: ${metrics.linesOfCode}
-- Comment Coverage: ${metrics.commentPercentage}%
-- Maintainability Index: ${metrics.maintainabilityIndex}
-
-${this.formatSecurityIssues(securityIssues)}
-
-${this.formatRefactoringOpportunities(refactoringOpportunities)}
-
-CHANGES TO ANALYZE:
-${codeChanges}
-
-DETAILED ANALYSIS REQUIREMENTS:
-
-1. Architecture & Design Patterns
-   - SOLID principles adherence
-   - Design pattern implementation
-   - Component coupling analysis
-   - Code organization assessment
-
-2. Performance Optimization
-   - Time complexity analysis
-   - Memory usage patterns
-   - Resource utilization
-   - Caching opportunities
-   - Async operation handling
-
-3. Security Assessment
-   - Input validation
-   - Authentication checks
-   - Authorization controls
-   - Data sanitization
-   - API security
-   - Error handling practices
-
-4. Code Quality & Maintainability
-   - Naming conventions
-   - Documentation completeness
-   - Code duplication
-   - Complexity management
-   - Error handling patterns
-
-5. Testing Strategy
-   - Unit test coverage
-   - Integration test needs
-   - Edge case scenarios
-   - Mocking requirements
-   - Test data management
-
-6. DevOps & Deployment
-   - Build process impact
-   - Configuration management
-   - Environment variables
-   - Deployment considerations
-   - Monitoring points
-
-Please provide actionable recommendations for each category where applicable. Skip the requirements that are not relevant to the code changes.`;
+    // Generate a focused, context-aware prompt
+    return `Perform a targeted, high-impact code review focusing specifically on the code changes:
+  
+  CODE COMPLEXITY SNAPSHOT:
+  - Cyclomatic Complexity: ${metrics.complexity} ${
+    metrics.complexity > this.complexityThresholds.maxCyclomaticComplexity ? '⚠️ EXCESSIVE COMPLEXITY' : ''
+  }
+  - Code Volume: ${metrics.linesOfCode} lines
+  - Comment Coverage: ${metrics.commentPercentage.toFixed(2)}%
+  - Maintainability Index: ${metrics.maintainabilityIndex.toFixed(2)}
+  
+  ${this.formatSecurityIssues(securityIssues)}
+  
+  ${this.formatRefactoringOpportunities(refactoringOpportunities)}
+  
+  PRECISE CODE CHANGES:
+  ${codeChanges}
+  
+  URGENT REVIEW FOCUS AREAS:
+  
+  1. Immediate Refactoring Targets
+     - Identify specific code blocks with:
+       * High cognitive complexity
+       * Repeated logic patterns
+       * Potential performance bottlenecks
+     - Propose concrete refactoring strategies with exact line/block references
+  
+  2. Security Critical Review
+     - Zero in on:
+       * Input validation vulnerabilities
+       * Potential injection points
+       * Unhandled error scenarios
+       * Authentication/authorization weak spots
+     - Provide actionable mitigation strategies
+  
+  3. Performance Optimization
+     - Analyze:
+       * Algorithmic efficiency
+       * Unnecessary computations
+       * Resource-intensive operations
+       * Potential memory leaks
+     - Recommend precise optimization techniques
+  
+  4. Code Structure & Design
+     - Evaluate:
+       * SOLID principle violations
+       * Tight coupling between components
+       * Excessive dependencies
+       * Lack of abstraction
+     - Suggest architectural improvements
+  
+  5. Testability Enhancement
+     - Identify:
+       * Untestable code blocks
+       * Missing edge case handling
+       * Complex function signatures
+     - Propose test strategy and structural changes
+  
+  DELIVERABLE:
+  - Hyper-focused recommendations
+  - Line-specific improvement suggestions
+  - Prioritized action items
+  - Minimum viable refactoring approach
+  
+  CRITICAL INSTRUCTION: 
+- Provide code recommendations ONLY for areas directly affected by the code changes
+- If a section (e.g., Performance, Security) is NOT applicable to the current changes, DO NOT mention it at all
+- Focus exclusively on relevant, actionable improvements
+- Be concise and precise, addressing only the specific modifications in the code
+`;
   }
 
   private performDetailedAnalysis(text: string): AnalysisResult {

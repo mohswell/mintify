@@ -79,10 +79,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: AI Code Review
-        uses: mohswell/mintify@v2.0
+        uses: mohswell/mintify@v2.1
         with:
           BASE_APP_URL: ${{secrets.BASE_APP_URL}}
           API_KEY: ${{secrets.API_KEY}}
+          GENERATE_TESTS: "true"
 
   # build_test:
   #   needs: [security_scan]
