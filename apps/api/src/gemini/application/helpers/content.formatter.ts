@@ -1,9 +1,45 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Content, Part } from '@google/generative-ai';
+import { createContent } from './content.helper';
+
+interface CodeMetrics {
+  complexity: number;
+  linesOfCode: number;
+  commentPercentage: number;
+  maintainabilityIndex: number;
+}
+
+interface SecurityCheck {
+  severity: 'low' | 'medium' | 'high';
+  issue: string;
+  suggestion: string;
+}
+
+interface AnalysisResult {
+  metrics: CodeMetrics;
+  securityIssues: SecurityCheck[];
+  refactoringOpportunities: string[];
+  testSuggestions: string[];
+}
 
 @Injectable()
 export class ContentFormatterService {
   private readonly logger = new Logger(ContentFormatterService.name);
+
+  private readonly securityPatterns = {
+    sql: /(?:SELECT|INSERT|UPDATE|DELETE).*(?:FROM|INTO|WHERE)/i,
+    xss: /innerHTML|outerHTML|document\.write/i,
+    eval: /eval\(|Function\(.*\)/i,
+    secrets: /(?:api[_-]?key|token|password|secret)[=:]/i,
+    unsafeRegex: /(?:\.){2,}[\*\+]/,
+  };
+
+  private readonly complexityThresholds = {
+    maxFunctionLength: 20,
+    maxCyclomaticComplexity: 10,
+    minCommentPercentage: 10,
+    maxFileLength: 300,
+  };
 
   createContent(text: string, ...images: Express.Multer.File[]): Content[] {
     const imageParts: Part[] = images.map((image) => ({
@@ -13,95 +49,279 @@ export class ContentFormatterService {
       },
     }));
 
+    const analysis = this.performDetailedAnalysis(text);
+    const enhancedPrompt = this.createEnhancedPrompt(text, analysis);
+
     return [
       {
         role: 'user',
         parts: [
           ...imageParts,
           {
-            text: this.formatCodeReviewPrompt(text),
+            text: enhancedPrompt,
           },
         ],
       },
     ];
   }
 
-  private formatCodeReviewPrompt(text: string): string {
+  private createEnhancedPrompt(text: string, analysis: AnalysisResult): string {
     const codeChanges = this.extractCodeChanges(text);
+    const { metrics, securityIssues, refactoringOpportunities } = analysis;
 
-    return `Review the following code changes thoroughly and provide an analysis adhering to the guidelines below if applicable else skip the section not relevant to the code changes.:
-1. Code structure and architecture
-2. Potential refactoring opportunities
-3. Performance and efficiency
-4. Security vulnerabilities
-5. Dependency and import management
+    return `Perform a comprehensive code review of the following changes, considering these detailed metrics and findings:
+
+CODE METRICS:
+- Cyclomatic Complexity: ${metrics.complexity}
+- Lines of Code: ${metrics.linesOfCode}
+- Comment Coverage: ${metrics.commentPercentage}%
+- Maintainability Index: ${metrics.maintainabilityIndex}
+
+${this.formatSecurityIssues(securityIssues)}
+
+${this.formatRefactoringOpportunities(refactoringOpportunities)}
 
 CHANGES TO ANALYZE:
 ${codeChanges}
 
-REVIEW GUIDELINES:
-- Prioritize code changes over lengthy explanations
-- Focus on actionable improvements
-- Identify potential risks and optimization opportunities
-- Suggest specific refactoring strategies
+DETAILED ANALYSIS REQUIREMENTS:
 
-ANALYSIS FORMAT:
-## Key Changes
-- Brief overview of main modifications
+1. Architecture & Design Patterns
+   - SOLID principles adherence
+   - Design pattern implementation
+   - Component coupling analysis
+   - Code organization assessment
 
-## Code Structure Analysis
-- Architectural observations
-- Refactoring recommendations
+2. Performance Optimization
+   - Time complexity analysis
+   - Memory usage patterns
+   - Resource utilization
+   - Caching opportunities
+   - Async operation handling
 
-## Performance Insights
-- Efficiency improvements
-- Bottlenecks to address
+3. Security Assessment
+   - Input validation
+   - Authentication checks
+   - Authorization controls
+   - Data sanitization
+   - API security
+   - Error handling practices
 
-## Security Checkpoint
-- Security concerns
-- Risk mitigation strategies
+4. Code Quality & Maintainability
+   - Naming conventions
+   - Documentation completeness
+   - Code duplication
+   - Complexity management
+   - Error handling patterns
 
-## Dependency Review
-- Import and package management
-- Optimization suggestions
+5. Testing Strategy
+   - Unit test coverage
+   - Integration test needs
+   - Edge case scenarios
+   - Mocking requirements
+   - Test data management
 
-## Unit tests
-- If applicable, suggest unit tests for the changes made for the language used.
+6. DevOps & Deployment
+   - Build process impact
+   - Configuration management
+   - Environment variables
+   - Deployment considerations
+   - Monitoring points
 
-Provide a concise and actionable review while considering how the changes impact the existing application.`;
+Please provide actionable recommendations for each category where applicable. Skip the requirements that are not relevant to the code changes.`;
+  }
+
+  private performDetailedAnalysis(text: string): AnalysisResult {
+    const metrics = this.calculateCodeMetrics(text);
+    const securityIssues = this.performSecurityCheck(text);
+    const refactoringOpportunities = this.identifyRefactoringOpportunities(text);
+    const testSuggestions = this.generateTestSuggestions(text);
+
+    return {
+      metrics,
+      securityIssues,
+      refactoringOpportunities,
+      testSuggestions,
+    };
+  }
+
+  private calculateCodeMetrics(code: string): CodeMetrics {
+    const lines = code.split('\n');
+    const nonEmptyLines = lines.filter((line) => line.trim().length > 0);
+    const commentLines = lines.filter((line) => line.trim().startsWith('//') || line.trim().match(/\/\*|\*\//));
+
+    // Calculate cyclomatic complexity (simplified)
+    const complexity = (code.match(/if|while|for|&&|\|\||case/g) || []).length + 1;
+
+    // Calculate maintainability index (simplified version)
+    const volume = nonEmptyLines.length * Math.log2(new Set(code.split(/\s+/).filter(Boolean)).size);
+    const maintainabilityIndex = Math.max(
+      0,
+      ((171 - 5.2 * Math.log(volume) - 0.23 * complexity - 16.2 * Math.log(nonEmptyLines.length)) * 100) / 171,
+    );
+
+    return {
+      complexity,
+      linesOfCode: nonEmptyLines.length,
+      commentPercentage: (commentLines.length / nonEmptyLines.length) * 100,
+      maintainabilityIndex,
+    };
+  }
+
+  private performSecurityCheck(code: string): SecurityCheck[] {
+    const issues: SecurityCheck[] = [];
+
+    // Check for security patterns
+    Object.entries(this.securityPatterns).forEach(([type, pattern]) => {
+      if (pattern.test(code)) {
+        issues.push({
+          severity: 'high',
+          issue: `Potential ${type} vulnerability detected`,
+          suggestion: this.getSecuritySuggestion(type),
+        });
+      }
+    });
+
+    // Check for other security concerns
+    if (code.includes('http://')) {
+      issues.push({
+        severity: 'medium',
+        issue: 'Non-secure HTTP protocol usage',
+        suggestion: 'Use HTTPS instead of HTTP for secure communication',
+      });
+    }
+
+    return issues;
+  }
+
+  private identifyRefactoringOpportunities(code: string): string[] {
+    const opportunities: string[] = [];
+    const lines = code.split('\n');
+
+    // Check function length
+    const functionMatches = code.match(/function.*?\{[\s\S]*?\}/g) || [];
+    functionMatches.forEach((func) => {
+      const funcLines = func.split('\n').length;
+      if (funcLines > this.complexityThresholds.maxFunctionLength) {
+        opportunities.push(`Consider breaking down function with ${funcLines} lines into smaller functions`);
+      }
+    });
+
+    // Check for duplicate code blocks
+    const codeBlocks = new Map<string, number>();
+    for (let i = 0; i < lines.length - 3; i++) {
+      const block = lines.slice(i, i + 4).join('\n');
+      codeBlocks.set(block, (codeBlocks.get(block) || 0) + 1);
+    }
+    codeBlocks.forEach((count, block) => {
+      if (count > 1) {
+        opportunities.push('Duplicate code block detected - consider extracting to a shared function');
+      }
+    });
+
+    return opportunities;
+  }
+
+  private generateTestSuggestions(code: string): string[] {
+    const suggestions: string[] = [];
+
+    // Identify testable functions
+    const functionMatches = code.match(/function\s+(\w+)\s*\([^)]*\)/g) || [];
+    functionMatches.forEach((func) => {
+      const funcName = func.match(/function\s+(\w+)/)[1];
+      suggestions.push(`Test ${funcName} with different input scenarios`);
+
+      // Suggest edge cases based on function parameters
+      const params = func.match(/\((.*?)\)/)[1];
+      if (params) {
+        suggestions.push(`Test ${funcName} with edge cases for parameters: ${params}`);
+      }
+    });
+
+    return suggestions;
+  }
+
+  private getSecuritySuggestion(type: string): string {
+    const suggestions = {
+      sql: 'Use parameterized queries or an ORM to prevent SQL injection',
+      xss: 'Use safe DOM manipulation methods or sanitize HTML content',
+      eval: 'Avoid using eval() and Function constructor',
+      secrets: 'Move sensitive data to environment variables',
+      unsafeRegex: 'Review and optimize regex patterns for safety',
+    };
+    return suggestions[type] || 'Review and apply security best practices';
+  }
+
+  private formatSecurityIssues(issues: SecurityCheck[]): string {
+    if (issues.length === 0) return 'SECURITY ANALYSIS: No immediate security concerns detected.';
+
+    return `SECURITY CONCERNS:
+${issues
+  .map(
+    (issue) => `- [${issue.severity.toUpperCase()}] ${issue.issue}
+  Suggestion: ${issue.suggestion}`,
+  )
+  .join('\n')}`;
+  }
+
+  private formatRefactoringOpportunities(opportunities: string[]): string {
+    if (opportunities.length === 0) return 'REFACTORING: No immediate refactoring needs identified.';
+
+    return `REFACTORING OPPORTUNITIES:
+${opportunities.map((opp) => `- ${opp}`).join('\n')}`;
   }
 
   private extractCodeChanges(text: string): string {
     try {
-      // Enhanced extraction with multiple strategies
       const extractionStrategies = [
-        // Diff block extraction (most preferred)
+        // Enhanced diff block extraction
         () => {
           const diffRegex = /```diff\n([\s\S]*?)```/g;
           const matches = [...text.matchAll(diffRegex)];
-          return matches.length > 0
-            ? matches.map(match =>
-              match[1].split('\n')
-                .filter(line => line.startsWith('+') || line.startsWith('-'))
-                .map(line => line.startsWith('+')
-                  ? `[ADDED] ${line.substring(1).trim()}`
-                  : `[REMOVED] ${line.substring(1).trim()}`)
-                .join('\n')
-            ).join('\n\n')
-            : null;
+          if (matches.length > 0) {
+            return matches
+              .map((match) => {
+                const lines = match[1].split('\n');
+                const changes = lines.filter((line) => line.startsWith('+') || line.startsWith('-'));
+                return changes
+                  .map((line) => {
+                    const type = line.startsWith('+') ? 'ADDED' : 'REMOVED';
+                    const code = line.substring(1).trim();
+                    const impact = this.assessChangeImpact(code);
+                    return `[${type}] ${code}\n  Impact: ${impact}`;
+                  })
+                  .join('\n');
+              })
+              .join('\n\n');
+          }
+          return null;
         },
 
-        // Code block extraction (fallback)
+        // Enhanced code block extraction
         () => {
           const codeRegex = /```[\w]*\n([\s\S]*?)```/g;
           const matches = [...text.matchAll(codeRegex)];
-          return matches.length > 0
-            ? matches.map(match => match[1].trim()).join('\n\n=== Next Block ===\n\n')
-            : null;
+          if (matches.length > 0) {
+            return matches
+              .map((match) => {
+                const code = match[1].trim();
+                const metrics = this.calculateCodeMetrics(code);
+                return `${code}\n\nMetrics:\n- Complexity: ${metrics.complexity}\n- Lines: ${metrics.linesOfCode}`;
+              })
+              .join('\n\n=== Next Block ===\n\n');
+          }
+          return null;
         },
 
-        // Plain text fallback
-        () => text.trim()
+        // Intelligent text analysis
+        () => {
+          const cleanText = text.trim();
+          if (cleanText.length > 0) {
+            const metrics = this.calculateCodeMetrics(cleanText);
+            return `${cleanText}\n\nAutomatic Analysis:\n${JSON.stringify(metrics, null, 2)}`;
+          }
+          return null;
+        },
       ];
 
       for (const strategy of extractionStrategies) {
@@ -109,56 +329,68 @@ Provide a concise and actionable review while considering how the changes impact
         if (result) return result;
       }
 
-      return 'No extractable code changes found.';
+      return 'No analyzable code changes found.';
     } catch (error: any) {
       this.logger.error('Code extraction error:', error);
       return `Extraction failed: ${error.message}`;
     }
   }
 
+  private assessChangeImpact(code: string): string {
+    const impacts = [];
+
+    if (code.includes('async') || code.includes('await')) {
+      impacts.push('Asynchronous operation modification');
+    }
+
+    if (code.includes('export') || code.includes('import')) {
+      impacts.push('Module dependency change');
+    }
+
+    if (code.includes('class') || code.includes('interface')) {
+      impacts.push('Type definition modification');
+    }
+
+    if (code.includes('try') || code.includes('catch')) {
+      impacts.push('Error handling modification');
+    }
+
+    return impacts.length > 0 ? impacts.join(', ') : 'Minor change';
+  }
+
   formatResponse(analysisText: string): string {
     try {
+      const enhancedAnalysis = this.enhanceAnalysisOutput(analysisText);
       return `
+${enhancedAnalysis}
 
-${analysisText}
-
----`;
+---
+Analysis generated with advanced metrics and security considerations.`;
     } catch (error) {
       this.logger.error('Response formatting error:', error);
       return analysisText;
     }
   }
 
-  // New method to validate and suggest import/package improvements
-  validateImportStructure(imports: string[]): string[] {
-    const suggestions: string[] = [];
+  private enhanceAnalysisOutput(analysis: string): string {
+    // Add severity indicators
+    const withSeverity = analysis.replace(/(CRITICAL|HIGH|MEDIUM|LOW):/g, (match) => `🔴 ${match}`);
 
-    // Check for unused imports
-    const unusedImports = imports.filter(imp =>
-      !imp.includes('used') && !imp.includes('required')
-    );
-    if (unusedImports.length > 0) {
-      suggestions.push('Remove unused imports to improve code cleanliness');
-    }
-
-    // Suggest import organization
-    const importGroups = {
-      external: imports.filter(imp => imp.includes('from') && !imp.includes('./') && !imp.includes('../')),
-      internal: imports.filter(imp => imp.includes('./') || imp.includes('../')),
-      typings: imports.filter(imp => imp.includes('type') || imp.includes('interface'))
+    // Add section emojis
+    const sections = {
+      Security: '🔒',
+      Performance: '⚡',
+      'Code Quality': '✨',
+      Testing: '🧪',
+      Architecture: '🏗️',
+      Dependencies: '📦',
     };
 
-    // Suggest import sorting and grouping
-    if (importGroups.external.length > 0) {
-      suggestions.push('Consider organizing imports: external, internal, and type imports');
-    }
+    let enhanced = withSeverity;
+    Object.entries(sections).forEach(([section, emoji]) => {
+      enhanced = enhanced.replace(new RegExp(`## ${section}`, 'g'), `## ${emoji} ${section}`);
+    });
 
-    return suggestions;
+    return enhanced;
   }
-
-  simplifyResponse(responseText: string): string {
-    // Perform only necessary processing, e.g., trimming, removing boilerplate, etc.
-    return responseText.trim();
-  }
-
 }
