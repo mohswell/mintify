@@ -1,0 +1,32 @@
+name: Keep Server Awake
+
+on:
+  schedule:
+    # Run every 10 minutes
+    - cron: '*/10 * * * *'
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+   cron:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Ping Backend server to keep it awake
+      run: |
+        # Timeout after 10 seconds, retry up to 3 times
+        response=$(curl -L -s -o /dev/null -w "%{http_code}" \
+          --connect-timeout 10 \
+          --max-time 20 \
+          --retry 3 \
+          --retry-delay 5 \
+          --retry-max-time 60 \
+          "${{ secrets.WEBSITE_URL }}")
+        
+        if [ $response -eq 200 ]; then
+          echo "Successfully pinged website. Status: $response"
+          exit 0
+        else
+          echo "Failed to ping website. Status: $response"
+          exit 1
+        fi
