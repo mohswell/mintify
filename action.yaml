@@ -190,16 +190,16 @@ runs:
         run: |
           # Ensure all required environment variables are set and not empty
           [[ -z "$PR_NUMBER" ]] && { echo "PR_NUMBER is empty"; exit 1; }
-          
-          # Set defaults more strictly
-          export PR_DRAFT="${PR_DRAFT:-false}"
-          export PR_LABELS="${PR_LABELS:-}"
-          export PR_REVIEWERS="${PR_REVIEWERS:-}"
-          export PR_COMMENTS="${PR_COMMENTS:-0}"
-          export PR_ADDITIONS="${PR_ADDITIONS:-0}"
-          export PR_DELETIONS="${PR_DELETIONS:-0}"
-          export PR_CHANGED_FILES="${PR_CHANGED_FILES:-0}"
-          export PR_MERGEABLE="${PR_MERGEABLE:-null}"
+
+          # Sanitize and set defaults more strictly
+          export PR_DRAFT=$(echo "${PR_DRAFT:-false}" | tr '[:upper:]' '[:lower:]')
+          export PR_LABELS=$(echo "${PR_LABELS:-}" | tr -d ' ')
+          export PR_REVIEWERS=$(echo "${PR_REVIEWERS:-}" | tr -d ' ')
+          export PR_COMMENTS=${PR_COMMENTS:-0}
+          export PR_ADDITIONS=${PR_ADDITIONS:-0}
+          export PR_DELETIONS=${PR_DELETIONS:-0}
+          export PR_CHANGED_FILES=${PR_CHANGED_FILES:-0}
+          export PR_MERGEABLE=$(echo "${PR_MERGEABLE:-false}" | tr '[:upper:]' '[:lower:]')
           
           # Metadata for commits          
           # Validate commit history
