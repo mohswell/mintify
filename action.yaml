@@ -559,7 +559,7 @@ runs:
           # Post the comment only if there are results
           if [ -n "$test_results" ]; then
             echo "Tests generated successfully. Posting results to GitHub..."
-            comment_body=$(cat << EOF
+            comment_body=$(cat << 'EOF'
             # 🧪 Automatically Generated Tests
 
             ${test_results}
