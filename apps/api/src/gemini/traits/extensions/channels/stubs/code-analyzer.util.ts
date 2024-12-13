@@ -5,9 +5,23 @@ import { CodeAnalysis, MethodInfo, PropertyInfo } from '../../presenters/test-ge
 export class CodeAnalyzer {
   private static readonly logger = new Logger(CodeAnalyzer.name);
 
+  // Configurable limits to prevent excessive memory usage
+  private static readonly CONFIG = {
+    MAX_DEPTH: 50,
+    MAX_DEPENDENCIES: 100,
+    MAX_PUBLIC_METHODS: 50,
+    MAX_PRIVATE_METHODS: 30,
+    MAX_PROPERTIES: 30,
+    MAX_COMPLEXITY: 100,
+    MAX_EDGE_CASES: 20,
+  };
+
   static analyzeCode(code: string): CodeAnalysis {
+    let sourceFile: ts.SourceFile | null = null;
+
     try {
-      const sourceFile = ts.createSourceFile('temp.ts', code, ts.ScriptTarget.Latest, true);
+      // Create source file with memory-efficient parsing
+      sourceFile = ts.createSourceFile('temp.ts', code, ts.ScriptTarget.Latest, false);
 
       const analysis: CodeAnalysis = {
         complexity: 0,
@@ -18,18 +32,30 @@ export class CodeAnalyzer {
         potentialEdgeCases: [],
       };
 
-      this.visitNode(sourceFile, analysis);
-      this.calculateComplexity(sourceFile, analysis);
-      this.identifyEdgeCases(sourceFile, analysis);
+      // Use a controlled traversal with depth limit
+      this.visitNode(sourceFile, analysis, 0);
+
+      // Truncate results if they exceed limits
+      this.enforceAnalysisLimits(analysis);
 
       return analysis;
     } catch (error) {
       this.logger.error('Error analyzing code:', error);
       throw error;
+    } finally {
+      // Explicitly clear the source file reference
+      sourceFile = null;
     }
   }
 
-  private static visitNode(node: ts.Node, analysis: CodeAnalysis): void {
+  private static visitNode(node: ts.Node, analysis: CodeAnalysis, depth: number = 0): void {
+    // Prevent excessive recursion
+    if (depth > this.CONFIG.MAX_DEPTH) return;
+
+    // Check and limit data collection
+    if (this.hasReachedAnalysisLimits(analysis)) return;
+
+    // Process different node types
     if (ts.isImportDeclaration(node)) {
       this.extractDependency(node, analysis);
     } else if (ts.isMethodDeclaration(node)) {
@@ -38,10 +64,45 @@ export class CodeAnalyzer {
       this.analyzeProperty(node, analysis);
     }
 
-    ts.forEachChild(node, (child) => this.visitNode(child, analysis));
+    // Recursive traversal with controlled depth
+    ts.forEachChild(node, (child) => this.visitNode(child, analysis, depth + 1));
+  }
+
+  private static hasReachedAnalysisLimits(analysis: CodeAnalysis): boolean {
+    const { MAX_DEPENDENCIES, MAX_PUBLIC_METHODS, MAX_PRIVATE_METHODS, MAX_PROPERTIES } = this.CONFIG;
+
+    return (
+      analysis.dependencies.length >= MAX_DEPENDENCIES ||
+      analysis.publicMethods.length >= MAX_PUBLIC_METHODS ||
+      analysis.privateMethods.length >= MAX_PRIVATE_METHODS ||
+      analysis.classProperties.length >= MAX_PROPERTIES
+    );
+  }
+
+  private static enforceAnalysisLimits(analysis: CodeAnalysis): void {
+    const {
+      MAX_DEPENDENCIES,
+      MAX_PUBLIC_METHODS,
+      MAX_PRIVATE_METHODS,
+      MAX_PROPERTIES,
+      MAX_COMPLEXITY,
+      MAX_EDGE_CASES,
+    } = this.CONFIG;
+
+    // Truncate arrays to prevent excessive memory usage
+    analysis.dependencies = analysis.dependencies.slice(0, MAX_DEPENDENCIES);
+    analysis.publicMethods = analysis.publicMethods.slice(0, MAX_PUBLIC_METHODS);
+    analysis.privateMethods = analysis.privateMethods.slice(0, MAX_PRIVATE_METHODS);
+    analysis.classProperties = analysis.classProperties.slice(0, MAX_PROPERTIES);
+    analysis.potentialEdgeCases = analysis.potentialEdgeCases.slice(0, MAX_EDGE_CASES);
+
+    // Cap overall complexity
+    analysis.complexity = Math.min(analysis.complexity, MAX_COMPLEXITY);
   }
 
   private static extractDependency(node: ts.ImportDeclaration, analysis: CodeAnalysis): void {
+    if (this.hasReachedAnalysisLimits(analysis)) return;
+
     const moduleSpecifier = node.moduleSpecifier.getText().replace(/['"]/g, '');
     if (!analysis.dependencies.includes(moduleSpecifier)) {
       analysis.dependencies.push(moduleSpecifier);
@@ -49,6 +110,8 @@ export class CodeAnalyzer {
   }
 
   private static analyzeMethod(node: ts.MethodDeclaration, analysis: CodeAnalysis): void {
+    if (this.hasReachedAnalysisLimits(analysis)) return;
+
     const methodInfo: MethodInfo = {
       name: node.name.getText(),
       parameters: this.getParameterInfo(node),

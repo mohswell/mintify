@@ -2,17 +2,20 @@ import { CodeAnalysis, TestStrategy, MockStrategy } from '../../presenters/test-
 
 export class TestStrategyGenerator {
   static generateStrategy(analysis: CodeAnalysis): { testStrategy: TestStrategy; mockStrategy: MockStrategy } {
+    // Create a defensive copy to prevent mutation
+    const safeAnalysis = { ...analysis };
+
     const testStrategy: TestStrategy = {
       unitTestPattern: 'describe-it',
-      includeSnapshots: this.shouldIncludeSnapshots(analysis),
-      includeBenchmarks: this.shouldIncludeBenchmarks(analysis),
-      parallelization: this.shouldEnableParallelization(analysis),
+      includeSnapshots: this.shouldIncludeSnapshots(safeAnalysis),
+      includeBenchmarks: this.shouldIncludeBenchmarks(safeAnalysis),
+      parallelization: this.shouldEnableParallelization(safeAnalysis),
     };
 
     const mockStrategy: MockStrategy = {
-      preferredFramework: this.determinePreferredMockFramework(analysis),
-      mockPrivateMethods: this.shouldMockPrivateMethods(analysis),
-      mockExternalDependencies: analysis.dependencies.length > 0,
+      preferredFramework: this.determinePreferredMockFramework(safeAnalysis),
+      mockPrivateMethods: this.shouldMockPrivateMethods(safeAnalysis),
+      mockExternalDependencies: safeAnalysis.dependencies.length > 0,
     };
 
     return { testStrategy, mockStrategy };
