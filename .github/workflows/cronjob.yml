@@ -1,9 +1,9 @@
 name: Keep Server Awake
 
 on:
-  #schedule:
+  schedule:
     # Run every 10 minutes
-    #- cron: '*/10 * * * *'
+    - cron: '*/10 * * * *'
   # Allow manual triggering
   workflow_dispatch:
 
