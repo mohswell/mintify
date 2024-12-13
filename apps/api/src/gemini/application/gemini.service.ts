@@ -5,8 +5,8 @@ import { createContent } from './helpers/content.helper';
 import { GEMINI_PRO_MODEL, GEMINI_PRO_VISION_MODEL } from './gemini.constant';
 import { AnalyzeImage } from '~gemini/domain/interface/analyze-images.interface';
 import { ContentFormatterService } from './helpers/content.formatter';
-//import { TestFormatterService } from './helpers/test-formatter.helper';
-import { TestExtensionService } from '~gemini/traits/extensions/extensions.service';
+import { TestFormatterService } from './helpers/test-formatter.helper';
+//import { TestExtensionService } from '~gemini/traits/extensions/extensions.service';
 
 @Injectable()
 export class GeminiService {
@@ -16,8 +16,8 @@ export class GeminiService {
     @Inject(GEMINI_PRO_MODEL) private readonly proModel: GenerativeModel,
     @Inject(GEMINI_PRO_VISION_MODEL) private readonly proVisionModel: GenerativeModel,
     private readonly contentFormatter: ContentFormatterService,
-    //private readonly testFormatter: TestFormatterService,
-    private readonly testExtensionService: TestExtensionService,
+    private readonly testFormatter: TestFormatterService,
+    //private readonly testExtensionService: TestExtensionService,
   ) {}
 
   async generateText(prompt: string): Promise<GenAiResponse> {
@@ -109,7 +109,7 @@ export class GeminiService {
   // async generateTests(code: string): Promise<GenAiResponse> { //TODO: change the return type to GenAiResponse later to add types
   async generateTests(code: string): Promise<any> {
     return this.withRetry(async () => {
-      const contents = this.testExtensionService.createContent(code);
+      const contents = this.testFormatter.createContent(code);
       const { totalTokens } = await this.proModel.countTokens({ contents });
       this.logger.debug(`Token count for test generation: ${totalTokens}`);
 
@@ -117,7 +117,7 @@ export class GeminiService {
       const response = await result.response;
       const text = response.text();
 
-      const formattedResponse = this.testExtensionService.formatResponse(text);
+      const formattedResponse = this.testFormatter.formatResponse(text);
       this.logger.debug('Test generation completed successfully');
 
       return {
