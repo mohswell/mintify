@@ -7,6 +7,7 @@ import { env } from './configs/env.config';
 import * as express from 'express';
 import * as compression from 'compression';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { Logger } from '@nestjs/common';
 
 function setupSwagger(app: NestExpressApplication) {
   const config = new DocumentBuilder()
@@ -26,6 +27,7 @@ function setupSwagger(app: NestExpressApplication) {
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const logger = new Logger('MemoryUsageLogger');
   app.enableCors();
   app.useGlobalPipes(validateConfig);
   app.use(express.json({ limit: '2000kb' }));
@@ -34,6 +36,16 @@ async function bootstrap() {
   app.useGlobalFilters(new ApiExceptionsFilter(httpAdapterHost));
   app.use(compression());
   setupSwagger(app);
+
+  setInterval(() => {
+    const memoryUsage = process.memoryUsage();
+    logger.log('Memory Usage:', {
+      rss: `${(memoryUsage.rss / 1024 / 1024).toFixed(2)} MB`, // Resident Set Size
+      heapTotal: `${(memoryUsage.heapTotal / 1024 / 1024).toFixed(2)} MB`,
+      heapUsed: `${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`,
+      external: `${(memoryUsage.external / 1024 / 1024).toFixed(2)} MB`
+    });
+  }, 60000); // Log every 30 minutes
   await app.listen(env.PORT);
 }
 bootstrap();
