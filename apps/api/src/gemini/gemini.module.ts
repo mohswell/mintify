@@ -4,7 +4,6 @@ import { GeminiService } from './application/gemini.service';
 import { GeminiController } from './presenters/http/gemini.controller';
 import { ContentFormatterService } from './application/helpers/content.formatter';
 import { TestFormatterService } from './application/helpers/test-formatter.helper';
-import { TraitsModule } from './traits/traits.module';
 
 @Module({
   controllers: [GeminiController],
@@ -15,6 +14,5 @@ import { TraitsModule } from './traits/traits.module';
     ContentFormatterService,
     TestFormatterService,
   ],
-  imports: [TraitsModule],
 })
 export class GeminiModule {}
