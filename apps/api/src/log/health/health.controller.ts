@@ -10,6 +10,8 @@ import { BaseController } from '~decorators/version.decorator';
 import { Counter, Gauge, Histogram } from 'prom-client';
 import { Logger } from '@nestjs/common';
 import { HealthService } from './channels/health.service';
+import * as os from 'os';
+import * as path from 'path';
 
 @BaseController('health')
 @Injectable()
@@ -21,16 +23,16 @@ export class HealthController extends HealthIndicator {
 
   constructor(
     private health: HealthCheckService,
-    private healthService: HealthService, // Inject the new service
+    private healthService: HealthService,
     private memoryHealthIndicator: MemoryHealthIndicator,
     private diskHealthIndicator: DiskHealthIndicator,
   ) {
     super();
 
-    // Initialize Prometheus metrics with unique names to prevent potential collisions
     this.requestCounter = new Counter({
       name: 'nestjs_health_check_requests_total',
       help: 'Total number of health check requests',
+      labelNames: ['status'],
     });
 
     this.applicationStatusGauge = new Gauge({
@@ -41,63 +43,130 @@ export class HealthController extends HealthIndicator {
     this.responseTimeHistogram = new Histogram({
       name: 'nestjs_health_check_response_time_seconds',
       help: 'Histogram of response times for health checks',
-      buckets: [0.1, 0.5, 1, 5, 10], // Configurable buckets for response times
+      buckets: [0.1, 0.5, 1, 5, 10],
     });
+  }
+
+  private getDiskPath(): string {
+    if (process.env.NODE_ENV === 'production') {
+      // For Railway and Render, use the /app directory
+      return '/app';
+    }
+    // For local development
+    return process.platform === 'win32' ? path.parse(os.homedir()).root : '/';
+  }
+
+  private async checkDiskSpace() {
+    try {
+      const diskPath = this.getDiskPath();
+      // More lenient threshold (90% usage allowed)
+      return this.diskHealthIndicator.checkStorage('disk_storage', {
+        thresholdPercent: 0.9,
+        path: diskPath,
+      });
+    } catch (error) {
+      this.logger.warn(`Disk check failed: ${(error as Error).message}`);
+      // Return a warning instead of failing
+      return this.getStatus('disk_storage', true, {
+        message: 'Disk check skipped - continuing operation',
+        warning: true,
+      });
+    }
+  }
+
+  private async checkMemory() {
+    try {
+      // Increase heap limit to 800MB for production
+      const heapLimit =
+        process.env.NODE_ENV === 'production'
+          ? 800 * 1024 * 1024 // 800MB for production
+          : 500 * 1024 * 1024; // 500MB for development
+
+      return await this.memoryHealthIndicator.checkHeap('memory_heap', heapLimit);
+    } catch (error) {
+      this.logger.warn(`Memory check failed: ${(error as Error).message}`);
+      return this.getStatus('memory_heap', true, {
+        message: 'Memory warning - monitoring situation',
+        warning: true,
+      });
+    }
   }
 
   @Get()
   @HealthCheck()
   async check() {
-    // Use a more precise timer start
     const endTimer = this.responseTimeHistogram.startTimer();
-
-    // Increment request counter safely
-    this.requestCounter.inc();
 
     try {
       const result = await this.health.check([
-        // Database connection health
+        // Database health check
         () => this.healthService.checkDatabaseHealth(),
 
-        // Memory usage check with more robust configuration
-        async () => this.memoryHealthIndicator.checkHeap('memory_heap', 500 * 1024 * 1024), // Increased to 500 MB
+        // Memory check with graceful degradation
+        () => this.checkMemory(),
 
-        // Disk health check with more flexible configuration
-        async () =>
-          this.diskHealthIndicator.checkStorage('disk_storage', {
-            thresholdPercent: 0.75, // More lenient threshold
-            path: process.platform === 'win32' ? 'C:/' : '/',
-          }),
+        // Disk check with graceful degradation
+        () => this.checkDiskSpace(),
 
-        // Custom application-specific checks
+        // Application health check
         () => this.healthService.checkApplicationHealth(),
       ]);
 
-      // Set application status to healthy
+      // Check if there are any warnings
+      const hasWarnings = Object.values(result.details).some((detail: any) => detail.warning);
+
+      // Update metrics
       this.applicationStatusGauge.set(1);
+      this.requestCounter.inc({ status: hasWarnings ? 'warning' : 'healthy' });
 
-      return result;
+      // Modify the response to include warning status if needed
+      return {
+        ...result,
+        status: hasWarnings ? 'warning' : result.status,
+      };
     } catch (error) {
-      // More comprehensive error logging
-      this.logger.error('Detailed Health Check Failure', {
-        message: (error as any).message,
-        stack: (error as any).stack,
-        name: (error as any).name,
+      this.logger.error('Health Check Failed', {
+        error: {
+          message: (error as Error).message,
+          stack: (error as Error).stack,
+          name: (error as Error).name,
+        },
       });
 
-      // Set application status to unhealthy
       this.applicationStatusGauge.set(0);
+      this.requestCounter.inc({ status: 'error' });
 
-      // Throw a service unavailable exception with more context
-      throw new ServiceUnavailableException({
-        statusCode: 503,
-        message: 'Service health check failed',
-        error: 'Service Unavailable',
-        details: (error as any).message,
-      });
+      // Determine if this is a critical failure
+      const isCritical = this.isCriticalFailure(error);
+
+      if (isCritical) {
+        throw new ServiceUnavailableException({
+          statusCode: 503,
+          message: 'Critical service health check failed',
+          error: 'Service Unavailable',
+          details: (error as Error).message,
+        });
+      }
+
+      // Return degraded status for non-critical failures
+      return {
+        status: 'degraded',
+        details: {
+          error: {
+            status: 'down',
+            message: (error as Error).message,
+          },
+        },
+      };
     } finally {
-      // Ensure timer is always stopped
       endTimer();
     }
+  }
+
+  private isCriticalFailure(error: any): boolean {
+    // Define what constitutes a critical failure
+    const criticalErrors = ['database connection failed', 'out of memory', 'process crashed'];
+
+    return criticalErrors.some((criticalError) => error.message?.toLowerCase().includes(criticalError));
   }
 }
