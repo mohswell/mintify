@@ -95,7 +95,7 @@ runs:
 
       # TODO: MODIFY THIS IF THE ABOVE STEP KEEPS FAILING, THIS IS MY ORIGINAL IMPLEMENTATION
       # - name: Fetch branches
-      #   shell: bash
+      #   shell: bash 
       #   run: |
       #     git fetch origin ${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}
       #     git fetch origin ${{ github.event.pull_request.head.ref }}:refs/remotes/origin/${{ github.event.pull_request.head.ref }}

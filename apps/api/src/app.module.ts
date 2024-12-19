@@ -3,6 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { CacheModule } from '@nestjs/cache-manager';
 import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { HttpExceptionFilter, RouteGuard } from '~utils/guards';
 import { JwtMiddleware } from '~middleware/jwt.middleware';
 
@@ -13,12 +16,12 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from '~factories';
 import { ApiModule } from '~factories/api/api.module';
 import { GithubModule } from '~domains/github/github.module';
-import { HealthController } from '~log/health/health.controller';
 import { RequestLoggerMiddleware } from '~middleware/extensions/logger.middleware';
 import { TerminusModule } from '@nestjs/terminus';
 import { ContentTypeMiddleware } from '~middleware/content/content.middleware';
 import { UserController } from '~log/user/user.controller';
 import { UserProvider } from '~auth/providers/suppliers/user.provider';
+import { HealthModule } from '~log/health/vault/health.module';
 
 @Module({
   imports: [
@@ -33,6 +36,23 @@ import { UserProvider } from '~auth/providers/suppliers/user.provider';
       ttl: 10000, // 5 requests in 10 seconds
       limit: 5,
     }]),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),
+      exclude: ['/api/*'], // More specific exclusion pattern
+      serveRoot: '/', // Ensure root serving
+      serveStaticOptions: {
+        fallthrough: false, // Prevent falling through to static file serving for API routes
+        index: false // Disable serving index.html
+      }
+    }),
+    PrometheusModule.register({
+      defaultMetrics: {
+        enabled: true,
+        config: {
+          prefix: 'nestjs_'
+        }
+      }
+    }),
     // ThrottlerModule.forRoot([
     //   {
     //     name: 'short',   // For short intervals (1 second)
@@ -56,8 +76,9 @@ import { UserProvider } from '~auth/providers/suppliers/user.provider';
     PrismaModule,
     ApiModule,
     GithubModule,
+    HealthModule,
   ],
-  controllers: [AppController, HealthController, UserController],
+  controllers: [AppController, UserController],
   providers: [
     AppService,
     UserProvider,
@@ -75,9 +96,9 @@ import { UserProvider } from '~auth/providers/suppliers/user.provider';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // Apply request logger middleware to all routes
-    // consumer
-    //   .apply(RequestLoggerMiddleware)
-    //   .forRoutes('*');
+    consumer
+      .apply(RequestLoggerMiddleware)
+      .forRoutes('*');
 
     // consumer
     //   .apply(ContentTypeMiddleware)
@@ -86,13 +107,6 @@ export class AppModule implements NestModule {
 
     consumer
       .apply(JwtMiddleware)
-      .exclude(
-        '/',
-        'api/v1/auth/signup',
-        'api/v1/auth/login',
-        'api/v1/health',
-        { path: 'api/v1/auth/github-login', method: RequestMethod.POST }
-      )
       .forRoutes(
         "*"
       );
