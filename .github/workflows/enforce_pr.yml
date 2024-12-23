@@ -79,11 +79,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: AI Code Review
-        uses: mohswell/mintify@v2.3
+        uses: mohswell/mintify@v2.4
         with:
           BASE_APP_URL: ${{secrets.BASE_APP_URL}}
           API_KEY: ${{secrets.API_KEY}}
           GENERATE_TESTS: "true"
+          AUTO_LINK_JIRA_ISSUES: "true"
+          JIRA_USERNAME: ${{secrets.JIRA_USERNAME}}
+          JIRA_API_TOKEN: ${{secrets.JIRA_API_TOKEN}}
+          JIRA_BASE_URL: ${{secrets.JIRA_BASE_URL}}
 
   # build_test:
   #   needs: [security_scan]
