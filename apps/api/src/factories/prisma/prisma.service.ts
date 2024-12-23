@@ -5,68 +5,91 @@ import { PrismaClient } from '@prisma/client';
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
   private isConnected = false;
+  private connectionPromise: Promise<void> | null = null;
+
+  private readonly maxRetries = 3;
+  private readonly retryDelay = 1000; // 1 second
 
   constructor() {
     super({
       log: ['warn', 'error'],
-      errorFormat: 'pretty',
+      errorFormat: 'minimal',
       datasources: {
         db: {
-          url: `${process.env.DATABASE_URL}?pgbouncer=true`,
+          url: `${process.env.DATABASE_URL}?pgbouncer=true&connection_limit=5&pool_timeout=20`,
         },
       },
     });
   }
 
   async onModuleInit() {
-    try {
-      await this.$connect();
-      this.isConnected = true;
-      this.logger.log('Successfully connected to the database');
-    } catch (error) {
-      this.logger.error('Failed to connect to the database:', error);
-      this.isConnected = false;
-      throw error;
-    }
+    await this.connect();
   }
 
   async onModuleDestroy() {
     await this.disconnect();
   }
 
-  /**
-   * Centralized method for executing queries with improved error handling and connection management
-   */
-  async execute<T>(callback: (prisma: PrismaService) => Promise<T>): Promise<T> {
-    if (!this.isConnected) {
-      await this.onModuleInit();
+  private async connect(): Promise<void> {
+    // If already connecting, wait for that connection to complete
+    if (this.connectionPromise) {
+      await this.connectionPromise;
+      return;
     }
 
+    // If already connected, do nothing
+    if (this.isConnected) {
+      return;
+    }
+
+    // Create new connection promise
+    this.connectionPromise = this.connectWithRetry();
+
     try {
-      // Wrap the callback in a transaction to ensure atomic operations
-      return await this.$transaction(async (prisma) => {
-        return await callback(prisma as unknown as PrismaService);
+      await this.connectionPromise;
+    } finally {
+      this.connectionPromise = null;
+    }
+  }
+
+  private async connectWithRetry(retryCount = 0): Promise<void> {
+    try {
+      if (!this.isConnected) {
+        await this.$connect();
+        this.isConnected = true;
+        this.logger.log('Successfully connected to the database');
+      }
+    } catch (error) {
+      if (retryCount < this.maxRetries) {
+        this.logger.warn(`Connection attempt ${retryCount + 1} failed, retrying...`);
+        await new Promise((resolve) => setTimeout(resolve, this.retryDelay));
+        await this.connectWithRetry(retryCount + 1);
+      } else {
+        this.logger.error('Failed to connect to the database after multiple attempts:', error);
+        throw error;
+      }
+    }
+  }
+
+  async execute<T>(callback: (prisma: PrismaService) => Promise<T>): Promise<T> {
+    await this.connect();
+
+    try {
+      return await this.$transaction(async (prisma) => callback(prisma as unknown as PrismaService), {
+        maxWait: 5000,
+        timeout: 10000,
+        isolationLevel: 'ReadCommitted',
       });
     } catch (error) {
-      this.logger.error('Query execution failed:', error);
-
-      // Attempt to reconnect if the error suggests a connection issue
       if (this.isConnectionError(error)) {
-        try {
-          await this.disconnect();
-          await this.onModuleInit();
-        } catch (reconnectError) {
-          this.logger.error('Failed to reconnect:', reconnectError);
-        }
+        this.isConnected = false;
+        await this.disconnect();
+        throw new Error('Database connection error. Please retry.');
       }
-
       throw error;
     }
   }
 
-  /**
-   * Graceful disconnection method
-   */
   private async disconnect() {
     try {
       if (this.isConnected) {
@@ -79,19 +102,14 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     }
   }
 
-  /**
-   * Check if the error is related to database connection
-   */
   private isConnectionError(error: any): boolean {
-    const connectionErrors = [
-      'Connection lost',
-      'Connection timeout',
-      'Unable to connect',
-      'Connection refused',
-      'ECONNREFUSED',
+    return [
+      'connection lost',
+      'connection timeout',
+      'unable to connect',
+      'connection refused',
+      'econnrefused',
       'network error',
-    ];
-
-    return connectionErrors.some((errType) => error.message.toLowerCase().includes(errType.toLowerCase()));
+    ].some((errType) => error?.message?.toLowerCase().includes(errType));
   }
 }

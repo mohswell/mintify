@@ -1,7 +1,7 @@
 import { Module, MiddlewareConsumer, NestModule, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CacheModule } from '@nestjs/cache-manager';
-import { APP_GUARD, APP_FILTER } from '@nestjs/core';
+import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -22,6 +22,8 @@ import { ContentTypeMiddleware } from '~middleware/content/content.middleware';
 import { UserController } from '~log/user/user.controller';
 import { UserProvider } from '~auth/providers/suppliers/user.provider';
 import { HealthModule } from '~log/health/vault/health.module';
+import { HealthLoggingInterceptor } from '~middleware/traits/health.middleware';
+import { PUBLIC_PATHS } from '~middleware/constants/paths';
 
 @Module({
   imports: [
@@ -32,26 +34,28 @@ import { HealthModule } from '~log/health/vault/health.module';
       isGlobal: true,
       ttl: 300000, // Default cache TTL (5 minutes)
     }),
-    ThrottlerModule.forRoot([{
-      ttl: 10000, // 5 requests in 10 seconds
-      limit: 5,
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 10000, // 5 requests in 10 seconds
+        limit: 5,
+      },
+    ]),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
       exclude: ['/api/*'], // More specific exclusion pattern
       serveRoot: '/', // Ensure root serving
       serveStaticOptions: {
         fallthrough: false, // Prevent falling through to static file serving for API routes
-        index: false // Disable serving index.html
-      }
+        index: false, // Disable serving index.html
+      },
     }),
     PrometheusModule.register({
       defaultMetrics: {
         enabled: true,
         config: {
-          prefix: 'nestjs_'
-        }
-      }
+          prefix: 'nestjs_',
+        },
+      },
     }),
     // ThrottlerModule.forRoot([
     //   {
@@ -90,15 +94,16 @@ import { HealthModule } from '~log/health/vault/health.module';
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
     },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: HealthLoggingInterceptor,
+    },
   ],
 })
-
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // Apply request logger middleware to all routes
-    consumer
-      .apply(RequestLoggerMiddleware)
-      .forRoutes('*');
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
 
     // consumer
     //   .apply(ContentTypeMiddleware)
@@ -107,8 +112,7 @@ export class AppModule implements NestModule {
 
     consumer
       .apply(JwtMiddleware)
-      .forRoutes(
-        "*"
-      );
+      .exclude(...PUBLIC_PATHS)
+      .forRoutes('*');
   }
 }
