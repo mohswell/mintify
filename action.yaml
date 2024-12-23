@@ -481,134 +481,6 @@ runs:
           name: analysis-data
           path: .analysis-data
           retention-days: 1
- 
-      - name: Jira Integration and Issue Linking
-        shell: bash
-        run: |
-          # Debug input values
-          echo "PR Title: ${PR_TITLE}"
-          echo "PR Description: ${PR_DESCRIPTION}"
-          echo "Branch Name: ${GITHUB_HEAD_REF}"
-
-          # Function to extract Jira issues from text
-          extract_jira_issues() {
-            echo "$1" | grep -oE '[A-Z]+-[0-9]+' || true
-          }
-
-          # Try to find Jira issues in all possible locations
-          title_issues=$(extract_jira_issues "$PR_TITLE")
-          desc_issues=$(extract_jira_issues "$PR_DESCRIPTION")
-          branch_issues=$(extract_jira_issues "$GITHUB_HEAD_REF")
-
-          # Combine all found issues and remove duplicates
-          all_issues=$(echo -e "${title_issues}\n${desc_issues}\n${branch_issues}" | sort -u | grep . || true)
-
-          # Debug output
-          echo "Issues found in title: $title_issues"
-          echo "Issues found in description: $desc_issues"
-          echo "Issues found in branch: $branch_issues"
-          echo "All unique issues: $all_issues"
-
-          # If no issues found, exit successfully
-          if [[ -z "$all_issues" ]]; then
-            echo "No Jira issues found in PR title, description, or branch name"
-            exit 0
-          fi
-
-          # Process each unique Jira issue
-          echo "$all_issues" | while read issue_key; do
-            if [[ -z "$issue_key" ]]; then
-              continue
-            fi
-            
-            echo "Processing Jira issue: $issue_key"
-
-            # Prepare AI analysis results for Jira comment
-            jira_comment=$(cat << EOF
-            # Pull Request Analysis for $issue_key
-
-            ## PR Details
-            - **PR Number:** #${PR_NUMBER}
-            - **Author:** ${PR_AUTHOR}
-            - **Branch:** ${GITHUB_HEAD_REF}
-            - **Location Found:** $(
-              locations=""
-              [[ "$title_issues" == *"$issue_key"* ]] && locations+="PR Title "
-              [[ "$desc_issues" == *"$issue_key"* ]] && locations+="PR Description "
-              [[ "$branch_issues" == *"$issue_key"* ]] && locations+="Branch Name "
-              echo "$locations"
-            )
-
-            ## Code Analysis
-            ${ANALYSIS_RESULTS}
-
-            ## Suggested Actions
-            - Review the code changes
-            - Check alignment with issue requirements
-            - Validate test coverage
-
-            *Automated analysis by Mintify AI*
-            EOF
-            )
-
-            # Escape the comment for JSON
-            escaped_comment=$(echo "$jira_comment" | jq -sR .)
-
-            # Post comment to Jira
-            echo "Posting comment to Jira issue ${issue_key}"
-            curl_response=$(curl -s -w "\n%{http_code}" -X POST \
-              "${JIRA_BASE_URL}/rest/api/3/issue/${issue_key}/comment" \
-              -H "Authorization: Basic $(echo -n "${JIRA_USERNAME}:${JIRA_API_TOKEN}" | base64)" \
-              -H "Content-Type: application/json" \
-              -d "{\"body\": ${escaped_comment}}")
-            
-            http_code=$(echo "$curl_response" | tail -n1)
-            if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
-              echo "Successfully posted comment to ${issue_key}"
-            else
-              echo "Failed to post comment to ${issue_key}, but continuing..."
-            fi
-
-            # Link PR to Jira
-            echo "Linking PR to Jira issue ${issue_key}"
-            curl_response=$(curl -s -w "\n%{http_code}" -X POST \
-              "${JIRA_BASE_URL}/rest/api/3/issue/${issue_key}/remotelink" \
-              -H "Authorization: Basic $(echo -n "${JIRA_USERNAME}:${JIRA_API_TOKEN}" | base64)" \
-              -H "Content-Type: application/json" \
-              -d "{
-                \"globalId\": \"github-pr-${PR_NUMBER}\",
-                \"application\": {
-                  \"name\": \"GitHub\",
-                  \"type\": \"com.github.integration\"
-                },
-                \"relationship\": \"mentioned in\",
-                \"object\": {
-                  \"url\": \"${PR_URL}\",
-                  \"title\": \"${PR_TITLE}\",
-                  \"icon\": {
-                    \"url16x16\": \"https://github.com/favicon.ico\"
-                  }
-                }
-              }")
-            
-            http_code=$(echo "$curl_response" | tail -n1)
-            if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
-              echo "Successfully linked PR to ${issue_key}"
-            else
-              echo "Failed to link PR to ${issue_key}, but continuing..."
-            fi
-          done
-        env:
-          JIRA_BASE_URL: ${{ inputs.JIRA_BASE_URL }}
-          JIRA_USERNAME: ${{ inputs.JIRA_USERNAME }}
-          JIRA_API_TOKEN: ${{ inputs.JIRA_API_TOKEN }}
-          AUTO_LINK_JIRA_ISSUES: ${{ inputs.AUTO_LINK_JIRA_ISSUES }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_DESCRIPTION: ${{ github.event.pull_request.body }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          ANALYSIS_RESULTS: "Analysis results placeholder"
 
       - name: Post Initial Analysis Comment
         if: env.ANALYSIS_RESULTS != ''
@@ -789,6 +661,106 @@ runs:
       #     API_KEY: ${{ env.API_KEY }}
       #     REPO: ${{ github.repository }}
       #     PR_NUMBER: ${{ github.event.issue.number }}
+
+    - name: Jira Integration and Issue Linking
+      shell: bash
+      run: |
+        # Debug input values
+        echo "PR Title: ${PR_TITLE}"
+        echo "PR Description: ${PR_DESCRIPTION}"
+        echo "Branch Name: ${GITHUB_HEAD_REF}"
+
+        # Extract Jira issue keys from PR title and description
+        title_issues=$(echo "$PR_TITLE" | grep -oE '[A-Z]+-[0-9]+' || true)
+        desc_issues=$(echo "$PR_DESCRIPTION" | grep -oE '[A-Z]+-[0-9]+' || true)
+        branch_issues=$(echo "$GITHUB_HEAD_REF" | grep -oE '[A-Z]+-[0-9]+' || true)
+
+        # Combine all found issues and remove duplicates
+        all_issues=$(echo -e "${title_issues}\n${desc_issues}\n${branch_issues}" | sort -u | grep . || true)
+
+        # Debug output
+        echo "Issues found in title: $title_issues"
+        echo "Issues found in description: $desc_issues"
+        echo "Issues found in branch: $branch_issues"
+        echo "All unique issues: $all_issues"
+
+        # If no issues found, exit successfully
+        if [[ -z "$all_issues" ]]; then
+          echo "No Jira issues found in PR title, description, or branch name"
+          exit 0
+        fi
+
+        # Process each unique Jira issue
+        echo "$all_issues" | while read issue_key; do
+          if [[ -z "$issue_key" ]]; then
+            continue
+          fi
+          
+          echo "Processing Jira issue: $issue_key"
+
+          # Create the comment content with proper EOF handling
+          read -r -d '' jira_comment << ENDOFCOMMENT
+# Pull Request Analysis for $issue_key
+
+## PR Details
+- **PR Number:** #${PR_NUMBER}
+- **Author:** ${PR_AUTHOR}
+- **Branch:** ${GITHUB_HEAD_REF}
+
+## Code Analysis
+${ANALYSIS_RESULTS}
+
+## Suggested Actions
+- Review the code changes
+- Check alignment with issue requirements
+- Validate test coverage
+
+*Automated analysis by Mintify AI*
+ENDOFCOMMENT
+
+          # Escape the comment for JSON
+          escaped_comment=$(echo "$jira_comment" | jq -sR .)
+
+          # Post comment to Jira
+          echo "Posting comment to Jira issue ${issue_key}"
+          curl -s -X POST \
+            "${JIRA_BASE_URL}/rest/api/3/issue/${issue_key}/comment" \
+            -H "Authorization: Basic $(echo -n "${JIRA_USERNAME}:${JIRA_API_TOKEN}" | base64)" \
+            -H "Content-Type: application/json" \
+            -d "{\"body\": ${escaped_comment}}" || echo "Failed to post comment, continuing..."
+
+          # Link PR to Jira
+          echo "Linking PR to Jira issue ${issue_key}"
+          curl -s -X POST \
+            "${JIRA_BASE_URL}/rest/api/3/issue/${issue_key}/remotelink" \
+            -H "Authorization: Basic $(echo -n "${JIRA_USERNAME}:${JIRA_API_TOKEN}" | base64)" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"globalId\": \"github-pr-${PR_NUMBER}\",
+              \"application\": {
+                \"name\": \"GitHub\",
+                \"type\": \"com.github.integration\"
+              },
+              \"relationship\": \"mentioned in\",
+              \"object\": {
+                \"url\": \"${PR_URL}\",
+                \"title\": \"${PR_TITLE}\",
+                \"icon\": {
+                  \"url16x16\": \"https://github.com/favicon.ico\"
+                }
+              }
+            }" || echo "Failed to link PR, continuing..."
+        done
+      env:
+        JIRA_BASE_URL: ${{ inputs.JIRA_BASE_URL }}
+        JIRA_USERNAME: ${{ inputs.JIRA_USERNAME }}
+        JIRA_API_TOKEN: ${{ inputs.JIRA_API_TOKEN }}
+        PR_TITLE: ${{ github.event.pull_request.title }}
+        PR_DESCRIPTION: ${{ github.event.pull_request.body }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        PR_URL: ${{ github.event.pull_request.html_url }}
+        ANALYSIS_RESULTS: "Analysis results placeholder"
 
 branding:
   icon: 'activity'
