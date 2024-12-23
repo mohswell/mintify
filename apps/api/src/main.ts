@@ -45,7 +45,7 @@ async function bootstrap() {
       heapUsed: `${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`,
       external: `${(memoryUsage.external / 1024 / 1024).toFixed(2)} MB`,
     });
-  }, 60000 * 30); // Log every 30 minutes
+  }, 60000 * 60); // Log every 60 minutes
   await app.listen(env.PORT);
 }
 bootstrap();
