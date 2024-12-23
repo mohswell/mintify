@@ -161,12 +161,22 @@ export class GithubController {
   })
   async getAllFileAnalyses(@Req() req) {
     try {
-      const userId = req.user.id;
+      // Validate user ID exists and is the correct type
+      const userId = BigInt(req.user.id);
       if (!userId) {
         throw new BadRequestException('User ID is missing in the request');
       }
+      this.logger.log(`Fetching file analyses for user ID: ${userId}`);
 
       const analysis = await this.fileAnalysisService.getFileAnalysisByUserId(userId);
+
+      if (!analysis) {
+        return {
+          message: 'No file analyses found',
+          data: [],
+        };
+      }
+
       return {
         message: 'File analysis retrieved successfully',
         data: analysis,
@@ -175,11 +185,12 @@ export class GithubController {
       if (error instanceof BadRequestException) {
         throw error;
       }
+
       throw new HttpException(
         {
           status: HttpStatus.INTERNAL_SERVER_ERROR,
           error: 'Failed to retrieve file analyses.',
-          details: (error as any).message,
+          details: error instanceof Error ? error.message : 'Unknown error',
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );

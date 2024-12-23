@@ -17,6 +17,19 @@ inputs:
     description: 'Automatically generate unit tests for changed files'
     required: false
     default: 'false'
+  JIRA_BASE_URL:
+    description: 'Base URL for Jira instance'
+    required: false
+  JIRA_USERNAME:
+    description: 'Jira username for authentication'
+    required: false
+  JIRA_API_TOKEN:
+    description: 'Jira API token for authentication'
+    required: false
+  AUTO_LINK_JIRA_ISSUES:
+    description: 'Automatically link PR to Jira issues mentioned in title or description'
+    required: false
+    default: 'true'
 
 permissions:
   contents: write
@@ -469,6 +482,94 @@ runs:
           path: .analysis-data
           retention-days: 1
 
+      - name: Jira Integration and Issue Linking
+        shell: bash
+        run: |
+          # Extract Jira issue keys from PR title and description
+          # Jira issue keys typically follow the format PROJECT-NUMBER (e.g., PROJ-123)
+          jira_issues=$(echo "${PR_TITLE} ${PR_DESCRIPTION}" | grep -oE '[A-Z]+-[0-9]+' | sort | uniq)
+
+          # If no Jira issues found and auto-linking is disabled, exit
+          if [[ -z "$jira_issues" && "$AUTO_LINK_JIRA_ISSUES" != "true" ]]; then
+            echo "No Jira issues found or auto-linking disabled."
+            exit 0
+          fi
+
+          # Process each Jira issue
+          for issue_key in $jira_issues; do
+            echo "Processing Jira issue: $issue_key"
+
+            # Prepare AI analysis results for Jira comment
+            jira_comment=$(cat << EOF
+            # Pull Request Analysis for $issue_key
+
+            ## PR Details
+            - **PR Number:** #${PR_NUMBER}
+            - **Author:** ${PR_AUTHOR}
+            - **Branch:** ${HEAD_BRANCH}
+
+            ## Code Analysis
+            ${ANALYSIS_RESULTS}
+
+            ## Suggested Actions
+            - Review the code changes
+            - Check alignment with issue requirements
+            - Validate test coverage
+
+            *Automated analysis by Mintify AI*
+            EOF
+            )
+
+            # Escape the comment for JSON
+            escaped_comment=$(echo "$jira_comment" | jq -sR .)
+
+            # Send the comment to Jira
+            jira_response=$(curl -s -X POST "${JIRA_BASE_URL}/rest/api/3/issue/${issue_key}/comment" \
+              -H "Authorization: Basic $(echo -n "${JIRA_USERNAME}:${JIRA_API_TOKEN}" | base64)" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"body\": ${escaped_comment}
+              }")
+
+            # Check if the comment was successfully posted
+            if [[ $? -eq 0 ]]; then
+              echo "Successfully posted comment to Jira issue ${issue_key}"
+            else
+              echo "Failed to post comment to Jira issue ${issue_key}"
+            fi
+
+            # Optional: Add a link between the PR and Jira issue
+            pr_link_response=$(curl -s -X POST "${JIRA_BASE_URL}/rest/api/3/issue/${issue_key}/remotelink" \
+              -H "Authorization: Basic $(echo -n "${JIRA_USERNAME}:${JIRA_API_TOKEN}" | base64)" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"globalId\": \"github-pr-${PR_NUMBER}\",
+                \"application\": {
+                  \"name\": \"GitHub\",
+                  \"type\": \"com.github.integration\"
+                },
+                \"relationship\": \"mentioned in\",
+                \"object\": {
+                  \"url\": \"${PR_URL}\",
+                  \"title\": \"${PR_TITLE}\",
+                  \"icon\": {
+                    \"url16x16\": \"https://github.com/favicon.ico\"
+                  }
+                }
+              }")
+
+            if [[ $? -eq 0 ]]; then
+              echo "Successfully linked PR to Jira issue ${issue_key}"
+            else
+              echo "Failed to link PR to Jira issue ${issue_key}"
+            fi
+          done
+        env:
+          JIRA_BASE_URL: ${{ inputs.JIRA_BASE_URL }}
+          JIRA_USERNAME: ${{ inputs.JIRA_USERNAME }}
+          JIRA_API_TOKEN: ${{ inputs.JIRA_API_TOKEN }}
+          AUTO_LINK_JIRA_ISSUES: ${{ inputs.AUTO_LINK_JIRA_ISSUES }}
+          
       - name: Post Initial Analysis Comment
         if: env.ANALYSIS_RESULTS != ''
         shell: bash
