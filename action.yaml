@@ -80,10 +80,10 @@ runs:
           echo "API_KEY=${{ inputs.API_KEY }}" >> $GITHUB_ENV
           echo "TOKEN=${{ inputs.TOKEN }}" >> $GITHUB_ENV
           echo "TEST_GENERATION=${{ inputs.GENERATE_TESTS }}" >> $GITHUB_ENV
-          echo: "JIRA_BASE_URL=${{ inputs.JIRA_BASE_URL }}" >> $GITHUB_ENV
-          echo: "JIRA_USERNAME=${{ inputs.JIRA_USERNAME }}" >> $GITHUB_ENV
-          echo: "JIRA_API_TOKEN=${{ inputs.JIRA_API_TOKEN }}" >> $GITHUB_ENV
-          echo: "AUTO_LINK_JIRA_ISSUES=${{ inputs.AUTO_LINK_JIRA_ISSUES }}" >> $GITHUB_ENV
+          echo "JIRA_BASE_URL=${{ inputs.JIRA_BASE_URL }}" >> $GITHUB_ENV
+          echo "JIRA_USERNAME=${{ inputs.JIRA_USERNAME }}" >> $GITHUB_ENV
+          echo "JIRA_API_TOKEN=${{ inputs.JIRA_API_TOKEN }}" >> $GITHUB_ENV
+          echo "AUTO_LINK_JIRA_ISSUES=${{ inputs.AUTO_LINK_JIRA_ISSUES }}" >> $GITHUB_ENV
         
           # Create analysis data directory if it doesn't exist
           mkdir -p .analysis-data
