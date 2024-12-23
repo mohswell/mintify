@@ -80,7 +80,11 @@ runs:
           echo "API_KEY=${{ inputs.API_KEY }}" >> $GITHUB_ENV
           echo "TOKEN=${{ inputs.TOKEN }}" >> $GITHUB_ENV
           echo "TEST_GENERATION=${{ inputs.GENERATE_TESTS }}" >> $GITHUB_ENV
-
+          echo: "JIRA_BASE_URL=${{ inputs.JIRA_BASE_URL }}" >> $GITHUB_ENV
+          echo: "JIRA_USERNAME=${{ inputs.JIRA_USERNAME }}" >> $GITHUB_ENV
+          echo: "JIRA_API_TOKEN=${{ inputs.JIRA_API_TOKEN }}" >> $GITHUB_ENV
+          echo: "AUTO_LINK_JIRA_ISSUES=${{ inputs.AUTO_LINK_JIRA_ISSUES }}" >> $GITHUB_ENV
+        
           # Create analysis data directory if it doesn't exist
           mkdir -p .analysis-data
 
@@ -133,7 +137,9 @@ runs:
           # Ensure PR number is always set
           PR_NUMBER="${{ github.event.pull_request.number }}"
           if [ -z "$PR_NUMBER" ]; then
-            echo "Error: PR Number is empty"
+            echo "PR_NUMBER from github.event: $PR_NUMBER"
+            echo "github.event contents:"
+            cat $GITHUB_EVENT_PATH
             exit 1
           fi
           
@@ -417,7 +423,7 @@ runs:
                   -H "Authorization: Bearer ${API_KEY}" \
                   -H "Content-Type: application/json" \
                   -d "{
-                    \"prNumber\": ${PR_NUMBER},
+                    \"prNumber\": \"${PR_NUMBER}\",
                     \"filePath\": \"${file}\",
                     \"additions\": ${additions},
                     \"deletions\": ${deletions},
@@ -599,10 +605,10 @@ runs:
             fi
           done
         env:
-          JIRA_BASE_URL: ${{ inputs.JIRA_BASE_URL }}
-          JIRA_USERNAME: ${{ inputs.JIRA_USERNAME }}
-          JIRA_API_TOKEN: ${{ inputs.JIRA_API_TOKEN }}
-          AUTO_LINK_JIRA_ISSUES: ${{ inputs.AUTO_LINK_JIRA_ISSUES }}
+          JIRA_BASE_URL: ${{ env.JIRA_BASE_URL }}
+          JIRA_USERNAME: ${{ env.JIRA_USERNAME }}
+          JIRA_API_TOKEN: ${{ env.JIRA_API_TOKEN }}
+          AUTO_LINK_JIRA_ISSUES: ${{ env.AUTO_LINK_JIRA_ISSUES }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_DESCRIPTION: ${{ github.event.pull_request.body }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
