@@ -215,6 +215,9 @@ runs:
           # Ensure all required environment variables are set and not empty
           [[ -z "$PR_NUMBER" ]] && { echo "PR_NUMBER is empty"; exit 1; }
 
+          # Convert PR_NUMBER to integer
+          PR_NUMBER=$(echo "$PR_NUMBER" | sed 's/[^0-9]*//g')
+
           # Sanitize and set defaults more strictly
           export PR_DRAFT=$(echo "${PR_DRAFT:-false}" | tr '[:upper:]' '[:lower:]')
           export PR_LABELS=$(echo "${PR_LABELS:-}" | tr -d ' ')
@@ -488,7 +491,7 @@ runs:
           path: .analysis-data
           retention-days: 1
  
-      - name: Jira Integration and Issue Linking
+     - name: Jira Integration and Issue Linking
         shell: bash
         run: |
           # Debug input values
@@ -530,14 +533,14 @@ runs:
             echo "Processing Jira issue: $issue_key"
 
             # Prepare AI analysis results for Jira comment
-            jira_comment=$(cat <<EOF
-            # Pull Request Analysis for $issue_key
+            jira_comment="$(cat << 'EOF'
+            # Pull Request Analysis for ${issue_key}
 
             ## PR Details
             - **PR Number:** #${PR_NUMBER}
             - **Author:** ${PR_AUTHOR}
             - **Branch:** ${GITHUB_HEAD_REF}
-            - **Location Found:** $( 
+            - **Location Found:** $(
               locations=""
               [[ "$title_issues" == *"$issue_key"* ]] && locations+="PR Title "
               [[ "$desc_issues" == *"$issue_key"* ]] && locations+="PR Description "
@@ -554,8 +557,8 @@ runs:
             - Validate test coverage
 
             *Automated analysis by Mintify AI*
-            EOF
-            )
+EOF
+)"
 
             # Escape the comment for JSON
             escaped_comment=$(echo "$jira_comment" | jq -sR .)
