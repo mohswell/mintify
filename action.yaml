@@ -190,7 +190,7 @@ runs:
           
           # Set environment variables with careful encoding
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
-          echo "PR_TITLE=$(echo $pr_details | jq -r '.title // empty' | base64 -w 0)" >> $GITHUB_ENV
+          echo "PR_TITLE=$(echo $pr_details | jq -r '.title // empty' | base64 --decode)" >> $GITHUB_ENV
           echo "PR_DRAFT=$(echo $pr_details | jq -r '.draft // false')" >> $GITHUB_ENV
           echo "PR_LABELS=$(echo $pr_details | jq -r '.labels | map(.name) | join(",") // empty')" >> $GITHUB_ENV
           echo "PR_REVIEWERS=$(echo $pr_details | jq -r '.requested_reviewers | map(.login) | join(",") // empty')" >> $GITHUB_ENV
@@ -236,7 +236,7 @@ runs:
           fi
 
           # Validate PR number explicitly
-          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" ]]; then
+          if [[ -z "$PR_NUMBER" || "$PR_NUMBER" == "null" || ! "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
             echo "Error: PR_NUMBER is missing or invalid"
             exit 1
           fi
