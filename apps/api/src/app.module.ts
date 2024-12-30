@@ -23,7 +23,7 @@ import { UserController } from '~log/user/user.controller';
 import { UserProvider } from '~auth/providers/suppliers/user.provider';
 import { HealthModule } from '~log/health/vault/health.module';
 import { HealthLoggingInterceptor } from '~middleware/traits/health.middleware';
-import { PUBLIC_PATHS } from '~middleware/constants/paths';
+import { PUBLIC_PATHS } from '~middleware/constants';
 
 @Module({
   imports: [
