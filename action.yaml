@@ -533,32 +533,29 @@ runs:
             echo "Processing Jira issue: $issue_key"
 
             # Prepare AI analysis results for Jira comment
-            jira_comment="$(cat << 'EOF'
-            # Pull Request Analysis for ${issue_key}
+            jira_comment="# Pull Request Analysis for $issue_key
 
-            ## PR Details
-            - **PR Number:** #${PR_NUMBER}
-            - **Author:** ${PR_AUTHOR}
-            - **Branch:** ${GITHUB_HEAD_REF}
-            - **Location Found:** $(
-              locations=""
-              [[ "$title_issues" == *"$issue_key"* ]] && locations+="PR Title "
-              [[ "$desc_issues" == *"$issue_key"* ]] && locations+="PR Description "
-              [[ "$branch_issues" == *"$issue_key"* ]] && locations+="Branch Name "
-              echo "$locations"
-            )
+## PR Details
+- **PR Number:** #${PR_NUMBER}
+- **Author:** ${PR_AUTHOR}
+- **Branch:** ${GITHUB_HEAD_REF}
+- **Location Found:** $(
+  locations=""
+  [[ "$title_issues" == *"$issue_key"* ]] && locations+="PR Title "
+  [[ "$desc_issues" == *"$issue_key"* ]] && locations+="PR Description "
+  [[ "$branch_issues" == *"$issue_key"* ]] && locations+="Branch Name "
+  echo "$locations"
+)
 
-            ## Code Analysis
-            ${ANALYSIS_RESULTS}
+## Code Analysis
+${ANALYSIS_RESULTS}
 
-            ## Suggested Actions
-            - Review the code changes
-            - Check alignment with issue requirements
-            - Validate test coverage
+## Suggested Actions
+- Review the code changes
+- Check alignment with issue requirements
+- Validate test coverage
 
-            *Automated analysis by Mintify AI*
-EOF
-)"
+*Automated analysis by Mintify AI*"
 
             # Escape the comment for JSON
             escaped_comment=$(echo "$jira_comment" | jq -sR .)
