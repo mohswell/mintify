@@ -62,7 +62,7 @@ export class StatsDTO {
 
 export class PullRequestDTO {
     @IsNumber()
-    prNumber: number;
+    prNumber: number | string;
 
     @IsString()
     prTitle: string;
