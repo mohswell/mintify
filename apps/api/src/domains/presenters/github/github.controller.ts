@@ -50,17 +50,17 @@ export class GithubController {
         throw new HttpException('Pull Request number is required', HttpStatus.BAD_REQUEST);
       }
 
-      const prNumber = parseInt(rawPrNumber, 10);
+      // Ensure we're working with a number
+      const prNumber = typeof rawPrNumber === 'string' ? parseInt(rawPrNumber, 10) : Number(rawPrNumber);
       if (isNaN(prNumber) || prNumber <= 0) {
         this.logger.error('Invalid PR number', { rawPrNumber, prMetadata, requestBody: req.body });
         throw new HttpException('Pull Request number must be a valid positive integer', HttpStatus.BAD_REQUEST);
       }
 
-
-      // More detailed metadata cleaning
+      // Update the cleanedMetadata to ensure prNumber is a number
       const cleanedMetadata = {
         ...prMetadata,
-        prNumber,
+        prNumber: prNumber,
         closedAt: prMetadata.closedAt === 'null' ? null : prMetadata.closedAt,
         mergedAt: prMetadata.mergedAt === 'null' ? null : prMetadata.mergedAt,
         description: prMetadata.description === 'null' ? null : prMetadata.description,
