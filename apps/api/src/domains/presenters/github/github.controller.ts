@@ -28,7 +28,7 @@ export class GithubController {
     private readonly githubService: GithubService,
     private readonly fileAnalysisService: FileAnalysisService,
     private readonly logger: Logger,
-  ) {}
+  ) { }
 
   @Post('store-data')
   async storeData(@Req() req: any, @Body() prMetadata: any) {
@@ -43,10 +43,24 @@ export class GithubController {
         throw new HttpException('User information not found in request.', HttpStatus.UNAUTHORIZED);
       }
 
+      // Parse and validate prNumber
+      const rawPrNumber = prMetadata.prNumber || req.body.prNumber;
+      if (!rawPrNumber) {
+        this.logger.error('PR number is missing in both metadata and request body', { prMetadata, requestBody: req.body });
+        throw new HttpException('Pull Request number is required', HttpStatus.BAD_REQUEST);
+      }
+
+      const prNumber = parseInt(rawPrNumber, 10);
+      if (isNaN(prNumber) || prNumber <= 0) {
+        this.logger.error('Invalid PR number', { rawPrNumber, prMetadata, requestBody: req.body });
+        throw new HttpException('Pull Request number must be a valid positive integer', HttpStatus.BAD_REQUEST);
+      }
+
+
       // More detailed metadata cleaning
       const cleanedMetadata = {
         ...prMetadata,
-        prNumber: prMetadata.prNumber || req.body.prNumber,
+        prNumber,
         closedAt: prMetadata.closedAt === 'null' ? null : prMetadata.closedAt,
         mergedAt: prMetadata.mergedAt === 'null' ? null : prMetadata.mergedAt,
         description: prMetadata.description === 'null' ? null : prMetadata.description,
