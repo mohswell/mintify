@@ -279,7 +279,7 @@ runs:
 
           # Generate metadata
           metadata=$(jq -n \
-            --arg pr_number "$PR_NUMBER" \
+            --argjson pr_number "$(echo "$PR_NUMBER" | jq -R 'tonumber')" \
             --arg pr_title "$PR_TITLE" \
             --arg pr_author "$PR_AUTHOR" \
             --arg pr_url "$PR_URL" \
