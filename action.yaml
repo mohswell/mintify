@@ -513,13 +513,11 @@ runs:
           extract_jira_issues() {
             echo "$1" | grep -oE '[A-Z]+-[0-9]+' || true
           }
-
-          # Try to find Jira issues in all possible locations
+          
           title_issues=$(extract_jira_issues "$PR_TITLE")
           desc_issues=$(extract_jira_issues "$PR_DESCRIPTION")
           branch_issues=$(extract_jira_issues "$GITHUB_HEAD_REF")
-
-          # Combine all found issues and remove duplicates
+          
           all_issues=$(echo -e "${title_issues}\n${desc_issues}\n${branch_issues}" | sort -u | grep . || true)
 
           # Debug output
@@ -527,78 +525,49 @@ runs:
           echo "Issues found in description: $desc_issues"
           echo "Issues found in branch: $branch_issues"
           echo "All unique issues: $all_issues"
-
-          # If no issues found, exit successfully
+          
           if [[ -z "$all_issues" ]]; then
-            echo "No Jira issues found in PR title, description, or branch name"
+            echo "No Jira issues found"
             exit 0
           fi
-
-          # Process each unique Jira issue
-          echo "$all_issues" | while read issue_key; do
+          
+          while read -r issue_key; do
             if [[ -z "$issue_key" ]]; then
               continue
             fi
             
-            echo "Processing Jira issue: $issue_key"
-
-            # Create Jira comment content
-            read -r -d '' COMMENT_TEMPLATE << 'TEMPLATE'
-# Pull Request Analysis for %s
-
-## PR Details
-- **PR Number:** #%s
-- **Author:** %s
-- **Branch:** %s
-- **Location Found:** %s
-
-## Code Analysis
-%s
-
-## Suggested Actions
-- Review the code changes
-- Check alignment with issue requirements
-- Validate test coverage
-
-*Automated analysis by Mintify AI*
-TEMPLATE
-
-            # Build location string
             locations=""
             [[ "$title_issues" == *"$issue_key"* ]] && locations+="PR Title "
             [[ "$desc_issues" == *"$issue_key"* ]] && locations+="PR Description "
             [[ "$branch_issues" == *"$issue_key"* ]] && locations+="Branch Name "
+            
+            comment_content="# Pull Request Analysis for ${issue_key}
 
-            # Format the comment using printf
-            jira_comment=$(printf "$COMMENT_TEMPLATE" \
-              "$issue_key" \
-              "$PR_NUMBER" \
-              "$PR_AUTHOR" \
-              "$GITHUB_HEAD_REF" \
-              "$locations" \
-              "$ANALYSIS_RESULTS")
-
-            # Escape the comment for JSON
-            escaped_comment=$(echo "$jira_comment" | jq -sR .)
-
-            # Post comment to Jira
-            echo "Posting comment to Jira issue ${issue_key}"
-            curl_response=$(curl -s -w "\n%{http_code}" -X POST \
+            ## PR Details
+            - PR Number: #${PR_NUMBER}
+            - Author: ${PR_AUTHOR}
+            - Branch: ${GITHUB_HEAD_REF}
+            - Location Found: ${locations}
+            
+            ## Code Analysis
+            ${ANALYSIS_RESULTS}
+            
+            ## Suggested Actions
+            - Review the code changes
+            - Check alignment with issue requirements
+            - Validate test coverage
+            
+            *Automated analysis by Mintify AI*"
+            
+            escaped_comment=$(echo "$comment_content" | jq -sR .)
+            
+            curl -s -X POST \
               "${JIRA_BASE_URL}/rest/api/3/issue/${issue_key}/comment" \
               -H "Authorization: Basic $(echo -n "${JIRA_USERNAME}:${JIRA_API_TOKEN}" | base64)" \
               -H "Content-Type: application/json" \
-              -d "{\"body\": ${escaped_comment}}")
+              -d "{\"body\": ${escaped_comment}}"
             
-            http_code=$(echo "$curl_response" | tail -n1)
-            if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
-              echo "Successfully posted comment to ${issue_key}"
-            else
-              echo "Failed to post comment to ${issue_key}, but continuing..."
-            fi
-
-            # Link PR to Jira
-            echo "Linking PR to Jira issue ${issue_key}"
-            curl_response=$(curl -s -w "\n%{http_code}" -X POST \
+            curl -s -X POST \
               "${JIRA_BASE_URL}/rest/api/3/issue/${issue_key}/remotelink" \
               -H "Authorization: Basic $(echo -n "${JIRA_USERNAME}:${JIRA_API_TOKEN}" | base64)" \
               -H "Content-Type: application/json" \
@@ -616,15 +585,8 @@ TEMPLATE
                     \"url16x16\": \"https://github.com/favicon.ico\"
                   }
                 }
-              }")
-            
-            http_code=$(echo "$curl_response" | tail -n1)
-            if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
-              echo "Successfully linked PR to ${issue_key}"
-            else
-              echo "Failed to link PR to ${issue_key}, but continuing..."
-            fi
-          done
+              }"
+          done <<< "$all_issues"
 
       - name: Post Initial Analysis Comment
         if: env.ANALYSIS_RESULTS != ''
@@ -636,53 +598,30 @@ TEMPLATE
           PR_NUMBER: ${{ github.event.pull_request.number }}
           RUN_ID: ${{ github.run_id }}
         run: |
-          echo "Posting comment on PR..."
-          
-          # Function to clean up AI analysis results
-          clean_analysis_results() {
-            local results="$1"
-            echo "$results" | sed -E 's/.*"formattedResponse":"?//; s/"[[:space:]]*}$//; s/\\n/\n/g; s/\\\"/"/g'
+          clean_results() {
+            echo "$1" | sed -E 's/.*"formattedResponse":"?//; s/"[[:space:]]*}$//; s/\\n/\n/g; s/\\\"/"/g'
           }
+          
+          cleaned_analysis=$(clean_results "${ANALYSIS_RESULTS}")
+          
+          comment_content="# Code Analysis Report
 
-          # Clean and process analysis results
-          CLEANED_ANALYSIS_RESULTS=$(clean_analysis_results "${ANALYSIS_RESULTS}")
-
-          # Create comment template
-          read -r -d '' COMMENT_TEMPLATE << 'TEMPLATE'
-# Code Analysis Report
-
-%s
-
-## Test Generation:
-After approving, you can:
-- Reply `/generate-tests` to generate test cases
-
-*Generated by Mintify, View further Pull request info and AI suggestions in the [dashboard](https://bunjy.vercel.app/home)*
-TEMPLATE
-
-          # Format the comment using printf
-          COMMENT_BODY=$(printf "$COMMENT_TEMPLATE" "$CLEANED_ANALYSIS_RESULTS")
-
-          # Escape the comment for JSON
-          ESCAPED_COMMENT=$(echo "$COMMENT_BODY" | jq -sR .)
-
-          # Post the comment
-          curl_response=$(curl -s -w "\n%{http_code}" -X POST \
+          ${cleaned_analysis}
+          
+          ## Test Generation:
+          After approving, you can:
+          - Reply \`/generate-tests\` to generate test cases
+          
+          *Generated by Mintify, View further Pull request info and AI suggestions in the [dashboard](https://bunjy.vercel.app/home)*"
+          
+          escaped_comment=$(echo "$comment_content" | jq -sR .)
+          
+          curl -s -X POST \
             "https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments" \
             -H "Authorization: Bearer ${TOKEN}" \
             -H "Accept: application/vnd.github.v3+json" \
             -H "Content-Type: application/json" \
-            -d "{\"body\": ${ESCAPED_COMMENT}}")
-
-          # Check response
-          http_code=$(echo "$curl_response" | tail -n1)
-          if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
-            echo "Successfully posted analysis comment"
-          else
-            echo "Failed to post analysis comment"
-            echo "Response: $curl_response"
-            exit 1
-          fi
+            -d "{\"body\": ${escaped_comment}}"
 
       - name: Generate Tests
         if: env.GENERATE_TESTS == 'true'
