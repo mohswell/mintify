@@ -533,7 +533,8 @@ runs:
             echo "Processing Jira issue: $issue_key"
 
             # Prepare AI analysis results for Jira comment
-            jira_comment="# Pull Request Analysis for $issue_key
+            jira_comment="$(cat << 'EOF'
+# Pull Request Analysis for ${issue_key}
 
 ## PR Details
 - **PR Number:** #${PR_NUMBER}
@@ -555,7 +556,9 @@ ${ANALYSIS_RESULTS}
 - Check alignment with issue requirements
 - Validate test coverage
 
-*Automated analysis by Mintify AI*"
+*Automated analysis by Mintify AI*
+EOF
+)"
 
             # Escape the comment for JSON
             escaped_comment=$(echo "$jira_comment" | jq -sR .)
