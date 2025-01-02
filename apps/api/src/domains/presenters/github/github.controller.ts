@@ -28,7 +28,7 @@ export class GithubController {
     private readonly githubService: GithubService,
     private readonly fileAnalysisService: FileAnalysisService,
     private readonly logger: Logger,
-  ) { }
+  ) {}
 
   @Post('store-data')
   async storeData(@Req() req: any, @Body() prMetadata: any) {
@@ -46,21 +46,20 @@ export class GithubController {
       // Parse and validate prNumber
       const rawPrNumber = prMetadata.prNumber || req.body.prNumber;
       if (!rawPrNumber) {
-        this.logger.error('PR number is missing in both metadata and request body', { prMetadata, requestBody: req.body });
         throw new HttpException('Pull Request number is required', HttpStatus.BAD_REQUEST);
       }
 
-      // Ensure we're working with a number
-      const prNumber = typeof rawPrNumber === 'string' ? parseInt(rawPrNumber, 10) : Number(rawPrNumber);
+      // Ensure prNumber is numeric
+
+      const prNumber = Number(rawPrNumber);
       if (isNaN(prNumber) || prNumber <= 0) {
-        this.logger.error('Invalid PR number', { rawPrNumber, prMetadata, requestBody: req.body });
         throw new HttpException('Pull Request number must be a valid positive integer', HttpStatus.BAD_REQUEST);
       }
 
       // Update the cleanedMetadata to ensure prNumber is a number
       const cleanedMetadata = {
         ...prMetadata,
-        prNumber: prNumber,
+        prNumber,
         closedAt: prMetadata.closedAt === 'null' ? null : prMetadata.closedAt,
         mergedAt: prMetadata.mergedAt === 'null' ? null : prMetadata.mergedAt,
         description: prMetadata.description === 'null' ? null : prMetadata.description,
@@ -69,12 +68,6 @@ export class GithubController {
         labels: prMetadata.labels || [],
         reviewers: prMetadata.reviewers || [],
       };
-
-      // Validate critical fields
-      if (!cleanedMetadata.prNumber) {
-        this.logger.error('PR number is missing', cleanedMetadata);
-        throw new HttpException('Pull Request number is required', HttpStatus.BAD_REQUEST);
-      }
 
       const result = await this.githubService.storePullRequestData(cleanedMetadata, user.id);
 
