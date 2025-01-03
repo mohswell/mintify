@@ -1,6 +1,6 @@
-# AI-Integrated Code Pipeline 
+# AI-Integrated Code Pipeline
 
-This is an AI powered action designed to enhance code review and analyse file changes within a pull request by leveraging Gemini Nano to evaluate code quality, identify potential risks, suggest improvements, and generate tests automatically. 
+This is an AI-powered action designed to enhance code review and analyze file changes within a pull request by leveraging Gemini Nano to evaluate code quality, identify potential risks, suggest improvements, and generate tests automatically.
 It integrates seamlessly with your GitHub workflows to provide insightful feedback directly within your pull requests. Now with Jira integration!
 
 ## ✨ Key Features
@@ -29,9 +29,9 @@ It integrates seamlessly with your GitHub workflows to provide insightful feedba
 ### Step 1: Generate API Credentials
 1. Visit [Bunjy AI](https://bunjy.vercel.app)
 2. Log in with your GitHub account
-3. On the homepage sidebar click and navigate to "Access Tokens"
-4. Generate a new API Key and Base app url by clicking the generate button
-5. Copy your unique `API_KEY ` and `BASE_APP_URL`
+3. On the homepage sidebar, navigate to "Access Tokens"
+4. Generate a new API Key and Base app URL by clicking the generate button
+5. Copy your unique `API_KEY` and `BASE_APP_URL`
 
 ![API Credentials Setup](https://github.com/user-attachments/assets/54b0f3de-187c-4724-8bf5-915409e54dc1)
 
@@ -40,25 +40,34 @@ In your GitHub repository:
 1. Go to "Settings"
 2. Select "Secrets and variables"
 3. Click "New repository secret"
-4. Add the two secrets:
+4. Add the necessary secrets:
    - Name: `BASE_APP_URL`
      - Value: Your unique base URL from Bunjy AI
    - Name: `API_KEY`
      - Value: Your generated API key
-5. For Jira integration (optional):
-  - Name: `JIRA_BASE_URL`
-     - Value: Your unique Jira instance URL
-   - Name: `JIRA_USERNAME`
-     - Value: Your Jira username(email) that the account is registered with.
-  - Name: `JIRA_API_TOKEN`
-     - Value: Your generated API Token
-6. **NOTE: The action DOES NOT needs a personal TOKEN from github**, if not provided it defaults to the one provided by github actions automatically.
+   - For Jira integration (optional):
+     - Name: `JIRA_BASE_URL`
+       - Value: Your unique Jira instance URL
+     - Name: `JIRA_USERNAME`
+       - Value: Your Jira username (email associated with your Jira account)
+     - Name: `JIRA_API_TOKEN`
+       - Value: Your generated API Token
+5. **For private repositories**, you will need to generate a GitHub Personal Access Token (PAT) and add it as a secret:
+   - Name: `GH_PAT`
+     - Value: Your generated GitHub PAT
 
-I will soon find a way to use the action without the `BASE_APP_URL` specified, making it more flexible and easier to configure.
+### Step 3: Create a PAT
+1. Go to **GitHub Settings > Developer Settings > Personal Access Tokens**
+2. Generate a new token with the following permissions:
+   - `repo` (Full control of private repositories)
+   - `read:org` (Read organization membership details)
+   - `workflow` (Update GitHub Actions workflows)
+3. Copy the token and save it securely.
 
-### Step 3: Create Workflow File
-Create a `.github/workflows/ai.yml` file in your repository, use this template to set up:
+### Step 4: Create Workflow File
+Create a `.github/workflows/ai.yml` file in your repository. Use the following template:
 
+#### For Public Repositories:
 ```yaml
 name: AI Code Review
 
@@ -75,17 +84,50 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Bunjy AI Code Review              
-        uses: mohswell/mintify@v2.7.5
+        uses: mohswell/mintify@v2.8.1
         with:
           BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
           API_KEY: ${{ secrets.API_KEY }}
           GENERATE_TESTS: 'true' # Optional: defaults to 'false' if not provided
-          # Jira Integration
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           AUTO_LINK_JIRA_ISSUES: 'true'
 ```
+
+#### For Private Repositories:
+```yaml
+name: AI Code Review
+
+on:
+  pull_request:
+    branches:
+      '*'
+
+jobs:
+  ai:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Bunjy AI Code Review              
+        uses: mohswell/mintify@v2.8.1
+        with:
+          BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+          TOKEN: ${{ secrets.GH_PAT }}
+          GENERATE_TESTS: 'true' # Optional: defaults to 'false' if not provided
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          AUTO_LINK_JIRA_ISSUES: 'true'
+```
+
+### Notes:
+- For **public repositories**, the action works without a GitHub token.
+- For **private repositories**, a GitHub PAT is required for proper authentication and access.
+- I will soon find a way to use the action without the `BASE_APP_URL` specified, making it more flexible and easier to configure.
 
 To enable automatic generation of unit tests for changed files, set the `GENERATE_TESTS` input to 'true' in your workflow file:
 
@@ -106,11 +148,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Bunjy AI Code Review              
-        uses: mohswell/mintify@v2.7.5
+        uses: mohswell/mintify@v2.8.1
         with:
           BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
           API_KEY: ${{ secrets.API_KEY }}
           GENERATE_TESTS: 'false'
+          TOKEN: ${{ secrets.GH_PAT }}
           # Jira Integration (Optional)
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
