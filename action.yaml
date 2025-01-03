@@ -504,10 +504,13 @@ runs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           ANALYSIS_RESULTS: ${{ env.ANALYSIS_RESULTS }}
         run: |
-          # Debug input values
+          # Debug input values with masking sensitive data
           echo "PR Title: ${PR_TITLE}"
           echo "PR Description: ${PR_DESCRIPTION}"
           echo "Branch Name: ${GITHUB_HEAD_REF}"
+          echo "JIRA_BASE_URL is set: $([[ -n ${JIRA_BASE_URL} ]] && echo 'true' || echo 'false')"
+          echo "JIRA_USERNAME is set: $([[ -n ${JIRA_USERNAME} ]] && echo 'true' || echo 'false')"
+          echo "JIRA_API_TOKEN is set: $([[ -n ${JIRA_API_TOKEN} ]] && echo 'true' || echo 'false')"
 
           # Function to extract Jira issues from text
           extract_jira_issues() {
@@ -518,23 +521,38 @@ runs:
           desc_issues=$(extract_jira_issues "$PR_DESCRIPTION")
           branch_issues=$(extract_jira_issues "$GITHUB_HEAD_REF")
           
-          all_issues=$(echo -e "${title_issues}\n${desc_issues}\n${branch_issues}" | sort -u | grep . || true)
+          all_issues=$(printf "%s\n%s\n%s\n" "${title_issues}" "${desc_issues}" "${branch_issues}" | sort -u | grep . || true)
 
           # Debug output
-          echo "Issues found in title: $title_issues"
-          echo "Issues found in description: $desc_issues"
-          echo "Issues found in branch: $branch_issues"
-          echo "All unique issues: $all_issues"
+          echo "Issues found in title: ${title_issues:-none}"
+          echo "Issues found in description: ${desc_issues:-none}"
+          echo "Issues found in branch: ${branch_issues:-none}"
+          echo "All unique issues: ${all_issues:-none}"
           
           if [[ -z "$all_issues" ]]; then
-            echo "No Jira issues found"
+            echo "No Jira issues found - exiting successfully"
             exit 0
           fi
           
-          while read -r issue_key; do
+          # Test Jira API connection first
+          echo "Testing Jira API connection..."
+          auth_header="Authorization: Basic $(echo -n "${JIRA_USERNAME}:${JIRA_API_TOKEN}" | base64)"
+          test_response=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${JIRA_BASE_URL}/rest/api/3/myself" \
+            -H "${auth_header}")
+          
+          if [[ "$test_response" != "200" ]]; then
+            echo "Error: Failed to connect to Jira API (HTTP ${test_response})"
+            exit 1
+          fi
+          
+          process_issue() {
+            local issue_key="$1"
             if [[ -z "$issue_key" ]]; then
-              continue
+              return 0
             fi
+            
+            echo "Processing issue: $issue_key"
             
             locations=""
             [[ "$title_issues" == *"$issue_key"* ]] && locations+="PR Title "
@@ -550,7 +568,7 @@ runs:
             - Location Found: ${locations}
             
             ## Code Analysis
-            ${ANALYSIS_RESULTS}
+            ${ANALYSIS_RESULTS:-No analysis results available}
             
             ## Suggested Actions
             - Review the code changes
@@ -561,15 +579,23 @@ runs:
             
             escaped_comment=$(echo "$comment_content" | jq -sR .)
             
-            curl -s -X POST \
+            echo "Posting comment to Jira issue ${issue_key}..."
+            comment_response=$(curl -s -w "\n%{http_code}" \
               "${JIRA_BASE_URL}/rest/api/3/issue/${issue_key}/comment" \
-              -H "Authorization: Basic $(echo -n "${JIRA_USERNAME}:${JIRA_API_TOKEN}" | base64)" \
+              -H "${auth_header}" \
               -H "Content-Type: application/json" \
-              -d "{\"body\": ${escaped_comment}}"
+              -d "{\"body\": ${escaped_comment}}")
             
-            curl -s -X POST \
+            http_code=$(echo "$comment_response" | tail -n1)
+            if [[ "$http_code" != "201" ]]; then
+              echo "Warning: Failed to post comment to ${issue_key} (HTTP ${http_code})"
+              return 1
+            fi
+            
+            echo "Linking PR to Jira issue ${issue_key}..."
+            link_response=$(curl -s -w "\n%{http_code}" \
               "${JIRA_BASE_URL}/rest/api/3/issue/${issue_key}/remotelink" \
-              -H "Authorization: Basic $(echo -n "${JIRA_USERNAME}:${JIRA_API_TOKEN}" | base64)" \
+              -H "${auth_header}" \
               -H "Content-Type: application/json" \
               -d "{
                 \"globalId\": \"github-pr-${PR_NUMBER}\",
@@ -585,8 +611,26 @@ runs:
                     \"url16x16\": \"https://github.com/favicon.ico\"
                   }
                 }
-              }"
+              }")
+            
+            http_code=$(echo "$link_response" | tail -n1)
+            if [[ "$http_code" != "201" ]]; then
+              echo "Warning: Failed to create remote link for ${issue_key} (HTTP ${http_code})"
+              return 1
+            fi
+            
+            return 0
+          }
+          
+          # Process each issue
+          failed=0
+          while IFS= read -r issue_key; do
+            if ! process_issue "$issue_key"; then
+              failed=1
+            fi
           done <<< "$all_issues"
+          
+          exit $failed
 
       - name: Post Initial Analysis Comment
         if: env.ANALYSIS_RESULTS != ''
