@@ -98,10 +98,16 @@ runs:
       - name: Fetch branches and Commit Histories
         shell: bash
         run: |
-          # Fetch all history for all branches
-          git fetch --prune --unshallow
+          # Check if the repository is shallow
+          if git rev-parse --is-shallow-repository; then
+            echo "Repository is shallow, fetching complete history..."
+            git fetch --prune --unshallow
+          else
+            echo "Repository is already complete, fetching updates..."
+            git fetch --prune
+          fi
 
-           # Fetch specific branches
+          # Fetch specific branches
           git fetch origin ${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}
           git fetch origin ${{ github.event.pull_request.head.ref }}:refs/remotes/origin/${{ github.event.pull_request.head.ref }}
 
