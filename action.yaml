@@ -98,17 +98,28 @@ runs:
       - name: Fetch branches and Commit Histories
         shell: bash
         run: |
+          # Fetch all history for all branches
+          git fetch --prune --unshallow
+
+           # Fetch specific branches
           git fetch origin ${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}
           git fetch origin ${{ github.event.pull_request.head.ref }}:refs/remotes/origin/${{ github.event.pull_request.head.ref }}
 
-          # Ensure the branches are checked out
-          git checkout ${{ github.event.pull_request.base.ref }}
-          git checkout ${{ github.event.pull_request.head.ref }}
+          # Get the merge base commit (common ancestor)
+          merge_base=$(git merge-base origin/${{ github.event.pull_request.base.ref }} origin/${{ github.event.pull_request.head.ref }})
 
-          # Fetch detailed commit history between base and head branches 
+          # Get all commits from merge base to head branch
           commits=$(git log --pretty=format:'%H|%s|%ae|%an|%ce|%cn|%ad' \
-                  origin/${{ github.event.pull_request.base.ref }}..origin/${{ github.event.pull_request.head.ref }} | tr '\n' ';')
+                   $merge_base..origin/${{ github.event.pull_request.head.ref }} | tr '\n' ';')
+
+          # Validate commits were found
+          if [ -z "$commits" ]; then
+            echo "No commits found between merge base and head branch"
+            exit 1
+          fi
+
           echo "COMMIT_HISTORY=$commits" >> $GITHUB_ENV
+          echo "Found commits: $commits"
 
       # TODO: MODIFY THIS IF THE ABOVE STEP KEEPS FAILING, THIS IS MY ORIGINAL IMPLEMENTATION
       # - name: Fetch branches
@@ -185,12 +196,10 @@ runs:
             exit 1
           fi
           
-          # Safely extract and encode description to handle multiline and special characters
-          PR_DESCRIPTION=$(echo $pr_details | jq -r '.body // empty' | base64 -w 0)
-          
           # Set environment variables with careful encoding
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
-          echo "PR_TITLE=$(echo $pr_details | jq -r '.title // empty' | base64 --decode)" >> $GITHUB_ENV
+          echo "PR_TITLE=$(echo $pr_details | jq -r '.title // empty')" >> $GITHUB_ENV
+          echo "PR_DESCRIPTION=$(echo $pr_details | jq -r '.body // empty')" >> $GITHUB_ENV
           echo "PR_DRAFT=$(echo $pr_details | jq -r '.draft // false')" >> $GITHUB_ENV
           echo "PR_LABELS=$(echo $pr_details | jq -r '.labels | map(.name) | join(",") // empty')" >> $GITHUB_ENV
           echo "PR_REVIEWERS=$(echo $pr_details | jq -r '.requested_reviewers | map(.login) | join(",") // empty')" >> $GITHUB_ENV
@@ -198,7 +207,6 @@ runs:
           echo "PR_DELETIONS=$(echo $pr_details | jq -r '.deletions // 0')" >> $GITHUB_ENV
           echo "PR_CHANGED_FILES=$(echo $pr_details | jq -r '.changed_files // 0')" >> $GITHUB_ENV
           echo "PR_MERGEABLE=$(echo $pr_details | jq -r '.mergeable // false')" >> $GITHUB_ENV
-          echo "PR_DESCRIPTION=$PR_DESCRIPTION" >> $GITHUB_ENV
           echo "PR_AUTHOR_USERNAME=$(echo $pr_details | jq -r '.user.login // empty')" >> $GITHUB_ENV
           echo "PR_AUTHOR_AVATAR=$(echo $pr_details | jq -r .user.avatar_url)" >> $GITHUB_ENV
           echo "PR_BASE_REPO=$(echo $pr_details | jq -r .base.repo.full_name)" >> $GITHUB_ENV
@@ -243,20 +251,28 @@ runs:
 
           echo "Sending metadata to server..."
 
-          IFS=$'\n'
+          # Split the commit history string into an array
+          IFS=';' read -ra commit_array <<< "$COMMIT_HISTORY"
           commit_list=()
-          for commit in ${COMMIT_HISTORY}; do
-            IFS='|' read -r sha message author_email author_name committer_email committer_name date <<<"$commit"
+          for commit in "${commit_array[@]}"; do
+            # Skip empty commits
+            [ -z "$commit" ] && continue
+            
+            IFS='|' read -r sha message author_email author_name committer_email committer_name date <<< "$commit"
+            
+            # Skip if SHA is empty
+            [ -z "$sha" ] && continue
 
             # Escape commit message
             message=$(echo "$message" | jq -Rs .)
 
-            # Fetch commit stats (fallback to 0 if stats cannot be retrieved)
-            stats=$(git show --stat --format='' "$sha" | tail -n1 || echo "")
+            # Fetch detailed commit stats
+            stats=$(git show --stat --format='' "$sha" 2>/dev/null || echo "")
             files_changed=$(echo "$stats" | grep -oE '[0-9]+ file' | cut -d' ' -f1 || echo "0")
             insertions=$(echo "$stats" | grep -oE '[0-9]+ insertion' | cut -d' ' -f1 || echo "0")
             deletions=$(echo "$stats" | grep -oE '[0-9]+ deletion' | cut -d' ' -f1 || echo "0")
 
+            # Add to commit list with proper JSON formatting
             commit_list+=("{
               \"sha\":\"$sha\",
               \"message\":$message,
