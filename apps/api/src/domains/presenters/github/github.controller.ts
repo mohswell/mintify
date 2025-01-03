@@ -50,7 +50,6 @@ export class GithubController {
       }
 
       // Ensure prNumber is numeric
-
       const prNumber = Number(rawPrNumber);
       if (isNaN(prNumber) || prNumber <= 0) {
         throw new HttpException('Pull Request number must be a valid positive integer', HttpStatus.BAD_REQUEST);
@@ -126,35 +125,64 @@ export class GithubController {
   @Post('store-file-analysis')
   async storeFileAnalysis(@Body() fileAnalysisData: any) {
     try {
-      // Validate input for required fields
-      if (!fileAnalysisData.prNumber || !fileAnalysisData.filePath) {
-        throw new BadRequestException('PR Number and File path are required');
+      // Parse and validate prNumber
+      const rawPrNumber = fileAnalysisData.prNumber;
+      if (!rawPrNumber) {
+        throw new HttpException('Pull Request number is required', HttpStatus.BAD_REQUEST);
       }
 
-      if (typeof fileAnalysisData.additions !== 'number' || typeof fileAnalysisData.deletions !== 'number') {
-        throw new BadRequestException('Additions and deletions must be numbers');
+      // Ensure prNumber is numeric
+      const prNumber = Number(rawPrNumber);
+      if (isNaN(prNumber) || prNumber <= 0) {
+        this.logger.error(`Invalid PR number provided: ${rawPrNumber}`);
+        throw new HttpException('Pull Request number must be a valid positive integer', HttpStatus.BAD_REQUEST);
       }
 
-      const result = await this.fileAnalysisService.storeFileAnalysis({
-        prNumber: fileAnalysisData.prNumber,
+      // Validate other required fields
+      if (!fileAnalysisData.filePath) {
+        this.logger.error('No file path provided in request');
+        throw new HttpException('File path is required', HttpStatus.BAD_REQUEST);
+      }
+
+      // Parse and validate additions and deletions
+      const additions = Number(fileAnalysisData.additions);
+      const deletions = Number(fileAnalysisData.deletions);
+
+      if (isNaN(additions) || isNaN(deletions)) {
+        this.logger.error(
+          `Invalid additions or deletions: additions=${fileAnalysisData.additions}, deletions=${fileAnalysisData.deletions}`,
+        );
+        throw new HttpException('Additions and deletions must be valid numbers', HttpStatus.BAD_REQUEST);
+      }
+
+      // Create cleaned data object with proper number types
+      const cleanedData = {
+        prNumber,
         filePath: fileAnalysisData.filePath,
-        additions: fileAnalysisData.additions || 0,
-        deletions: fileAnalysisData.deletions || 0,
+        additions,
+        deletions,
         rawDiff: fileAnalysisData.rawDiff,
         //fileType: fileAnalysisData.fileType  // auto calculated by the file service
-      });
+      };
+
+      const result = await this.fileAnalysisService.storeFileAnalysis(cleanedData);
 
       return {
         message: 'File analysis stored successfully.',
         data: result,
       };
     } catch (error) {
-      console.error('Error storing file analysis:', error);
+      this.logger.error('Error storing file analysis:', error);
+
+      if (error instanceof HttpException) {
+        throw error; // Re-throw HTTP exceptions as-is
+      }
+
       throw new HttpException(
         {
           status: HttpStatus.INTERNAL_SERVER_ERROR,
           error: 'Failed to store file analysis.',
-          details: (error as any).message,
+          details: error instanceof Error ? error.message : 'Unknown error',
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
