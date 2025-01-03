@@ -99,7 +99,7 @@ runs:
         shell: bash
         run: |
           # Check if the repository is shallow
-          if git rev-parse --is-shallow-repository; then
+          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
             echo "Repository is shallow, fetching complete history..."
             git fetch --prune --unshallow
           else
