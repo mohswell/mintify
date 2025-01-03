@@ -84,7 +84,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Bunjy AI Code Review              
-        uses: mohswell/mintify@v2.8.2
+        uses: mohswell/mintify@v2.8.3
         with:
           BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
           API_KEY: ${{ secrets.API_KEY }}
@@ -112,7 +112,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Bunjy AI Code Review              
-        uses: mohswell/mintify@v2.8.2
+        uses: mohswell/mintify@v2.8.3
         with:
           BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
           API_KEY: ${{ secrets.API_KEY }}
@@ -148,7 +148,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Bunjy AI Code Review              
-        uses: mohswell/mintify@v2.8.2
+        uses: mohswell/mintify@v2.8.3
         with:
           BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
           API_KEY: ${{ secrets.API_KEY }}
