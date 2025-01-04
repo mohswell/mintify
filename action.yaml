@@ -669,7 +669,7 @@ runs:
           
           # Test Jira API connection first
           echo "Testing Jira API connection..."
-          auth_header="Authorization: Basic $(echo -n "${JIRA_USERNAME}:${JIRA_API_TOKEN}" | base64)"
+          auth_header="Authorization: Basic $(echo -n "${JIRA_USERNAME}:${JIRA_API_TOKEN}" | base64 -w 0)"
           test_response=$(curl -s -o /dev/null -w "%{http_code}" \
             "${JIRA_BASE_URL}/rest/api/3/myself" \
             -H "${auth_header}")
