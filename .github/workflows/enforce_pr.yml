@@ -84,10 +84,10 @@ jobs:
           BASE_APP_URL: ${{secrets.BASE_APP_URL}}
           API_KEY: ${{secrets.API_KEY}}
           GENERATE_TESTS: "true"
-          AUTO_LINK_JIRA_ISSUES: "true"
-          JIRA_USERNAME: ${{secrets.JIRA_USERNAME}}
-          JIRA_API_TOKEN: ${{secrets.JIRA_API_TOKEN}}
-          JIRA_BASE_URL: ${{secrets.JIRA_BASE_URL}}
+          # AUTO_LINK_JIRA_ISSUES: "true"
+          # JIRA_USERNAME: ${{secrets.JIRA_USERNAME}}
+          # JIRA_API_TOKEN: ${{secrets.JIRA_API_TOKEN}}
+          # JIRA_BASE_URL: ${{secrets.JIRA_BASE_URL}}
 
   # build_test:
   #   needs: [security_scan]
