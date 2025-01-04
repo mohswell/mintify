@@ -13,20 +13,23 @@ It integrates seamlessly with your GitHub workflows to provide insightful feedba
 - **Analytics Dashboard**: Track code quality trends and team performance
 - **GitHub Integration**: Native PR comments and workflow support
 
-![Screenshot (275)](https://github.com/user-attachments/assets/ef704379-5f7f-4a54-ba75-446e42dfe07e)
+![AI Analysis](https://github.com/user-attachments/assets/bf1670bc-33b0-4e31-9828-fc3b2a45f0e6)
+![Jira Card](https://github.com/user-attachments/assets/65148630-b32e-43e7-bab6-5ca732897c19)
 
 ---
 
-![Screenshot (301)](https://github.com/user-attachments/assets/d15fa6e0-4934-4a30-a3ad-9298a9fec654)
+![Jira Issue linking](https://github.com/user-attachments/assets/8e2468f8-bdf0-4d82-9daf-ee90bd50ef2c)
 
 ## Usage
 
 ### Prerequisites
+
 - A GitHub repository
 - GitHub Actions enabled
 - An account on [Bunjy AI](https://bunjy.vercel.app)
 
 ### Step 1: Generate API Credentials
+
 1. Visit [Bunjy AI](https://bunjy.vercel.app)
 2. Log in with your GitHub account
 3. On the homepage sidebar, navigate to "Access Tokens"
@@ -36,7 +39,9 @@ It integrates seamlessly with your GitHub workflows to provide insightful feedba
 ![API Credentials Setup](https://github.com/user-attachments/assets/54b0f3de-187c-4724-8bf5-915409e54dc1)
 
 ### Step 2: Configure Repository Secrets
+
 In your GitHub repository:
+
 1. Go to "Settings"
 2. Select "Secrets and variables"
 3. Click "New repository secret"
@@ -57,6 +62,7 @@ In your GitHub repository:
      - Value: Your generated GitHub PAT
 
 ### Step 3: Create a PAT
+
 1. Go to **GitHub Settings > Developer Settings > Personal Access Tokens**
 2. Generate a new token with the following permissions:
    - `repo` (Full control of private repositories)
@@ -65,16 +71,17 @@ In your GitHub repository:
 3. Copy the token and save it securely.
 
 ### Step 4: Create Workflow File
+
 Create a `.github/workflows/ai.yml` file in your repository. Use the following template:
 
 #### For Public Repositories:
+
 ```yaml
 name: AI Code Review
 
 on:
   pull_request:
-    branches:
-      '*'
+    branches: "*"
 
 jobs:
   ai:
@@ -83,26 +90,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Bunjy AI Code Review              
-        uses: mohswell/mintify@v2.8.3
+      - name: Bunjy AI Code Review
+        uses: mohswell/mintify@v3.0
         with:
           BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
           API_KEY: ${{ secrets.API_KEY }}
-          GENERATE_TESTS: 'true' # Optional: defaults to 'false' if not provided
+          GENERATE_TESTS: "true" # Optional: defaults to 'false' if not provided
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-          AUTO_LINK_JIRA_ISSUES: 'true'
+          AUTO_LINK_JIRA_ISSUES: "true"
 ```
 
 #### For Private Repositories:
+
 ```yaml
 name: AI Code Review
 
 on:
   pull_request:
-    branches:
-      '*'
+    branches: "*"
 
 jobs:
   ai:
@@ -111,20 +118,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Bunjy AI Code Review              
-        uses: mohswell/mintify@v2.8.3
+      - name: Bunjy AI Code Review
+        uses: mohswell/mintify@v3.0
         with:
           BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
           API_KEY: ${{ secrets.API_KEY }}
           TOKEN: ${{ secrets.GH_PAT }}
-          GENERATE_TESTS: 'true' # Optional: defaults to 'false' if not provided
+          GENERATE_TESTS: "true" # Optional: defaults to 'false' if not provided
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-          AUTO_LINK_JIRA_ISSUES: 'true'
+          AUTO_LINK_JIRA_ISSUES: "true"
 ```
 
 ### Notes:
+
 - For **public repositories**, the action works without a GitHub token.
 - For **private repositories**, a GitHub PAT is required for proper authentication and access.
 - I will soon find a way to use the action without the `BASE_APP_URL` specified, making it more flexible and easier to configure.
@@ -147,34 +155,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Bunjy AI Code Review              
-        uses: mohswell/mintify@v2.8.3
+      - name: Bunjy AI Code Review
+        uses: mohswell/mintify@v3.0
         with:
           BASE_APP_URL: ${{ secrets.BASE_APP_URL }}
           API_KEY: ${{ secrets.API_KEY }}
-          GENERATE_TESTS: 'false'
+          GENERATE_TESTS: "false"
           TOKEN: ${{ secrets.GH_PAT }}
           # Jira Integration (Optional)
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-          AUTO_LINK_JIRA_ISSUES: 'true'  # Optional, defaults to true
+          AUTO_LINK_JIRA_ISSUES: "true" # Optional, defaults to true
 ```
 
 ## How It Works: Technical Architecture
 
 ### 1. Authentication and Integration
+
 - Users setup the action in their workflows.
 - The action requires a `BASE_APP_URL` and `API_KEY` defined in your respository secrets.
 - You'll visit the dashboard page at [Bunjy AI](https://bunjy.vercel.app) to generate an `API_KEY` and also copy the `BASE_APP_URL`.
 - Users can log in using GitHub OAuth to authorize my core service.
 - The application connects directly to GitHub repositories via the action workflow.
-- Securely retrieves repository and pull request data. 
+- Securely retrieves repository and pull request data.
 - Encrypts the repository data and sends it to the web server for processing/decrypting and then sends it to Gemini AI.
 - Displays AI reviews for your code changes directly within the PR opened, or in the dahboard [homepage](https://bunjy.vercel.app/home).
 - Automatic linking and updates between PRs and Jira issues
 
 ### 2. AI Analysis Process
+
 1. When a pull request is opened, the app:
    - Captures code changes
    - Analyzes commit messages
@@ -186,56 +196,61 @@ jobs:
      - Reviewer recommendations
    - Displays the results to Jira for seamless issue tracking if enabled.
 
+![Jira Comment](https://github.com/user-attachments/assets/579e2aa6-14cb-489e-bd3c-46599185bd1e)
+
 ### 3. Data Flow
+
 ```mermaid
 flowchart LR
     A[GitHub PR] --> B[Core API Service]
     B --> B1[File Change Analyzer]
     B --> B2[Commit History Parser]
     B --> B3[Metadata Collector]
-    
+
     B1 & B2 & B3 --> C[Gemini AI]
-    
+
     C --> C1[Code Quality Analysis]
     C --> C2[Security Scanner]
     C --> C3[Test Generator]
-    
+
     C1 & C2 & C3 --> D[Analysis Results]
-    
+
     D --> D1[PR Comments]
     D --> D2[Issue Tracking]
     D --> D3[Analytics]
-    
+
     D1 -->|Auto Comment| A
     D2 -->|Link Issues| J[Jira Integration]
-    
+
     D --> E[Supabase DB]
     E --> F[Web Interface]
-    
+
     F --> F1[Dashboard]
     F --> F2[Analytics Panel]
     F --> F3[Settings]
-    
+
     F --> G{User Feedback}
     G -->|Review/Update| B
-    
+
     D3 -->|Detailed Insights| H[Reporting Tools]
     H --> H1[Performance Metrics]
     H --> H2[Quality Trends]
     H --> H3[Team Analytics]
-    
+
     H -->|Export/Share| I[External Platforms]
     I --> I1[CI/CD Tools]
     I --> I2[Team Dashboards]
     I --> I3[Documentation]
-    
+
     J -->|Sync Status| B
     J -->|Update Issues| J1[Jira Board]
     J1 -->|Status Updates| J
 ```
+
 ---
 
 ## 💡 What Problems Does Bunjy AI Solve?
+
 - Time-Consuming Code Reviews: Automates initial review process and highlights critical areas
 - Missed Security Issues: Identifies potential security risks and code vulnerabilities
 - Technical Debt: Suggests code improvements and best practices
@@ -277,12 +292,14 @@ npm install turbo --save-dev
 Configure environment variables in `.env`, `.env.local`, or `.env.template` for different environments.
 
 #### Root `.env` Example:
+
 ```env
 DATABASE_URL=""
 DIRECT_URL=""
 ```
 
 #### For the Frontend go to the `web` folder and create a `.env.local` Example:
+
 ```env
 NEXT_PUBLIC_SUPABASE_URL=""
 NEXT_PUBLIC_SUPABASE_ANON_KEY=""
@@ -296,6 +313,7 @@ NEXT_PUBLIC_API_BASE_URL="http://localhost:8000/api/v1"
 ```
 
 #### For the Backend go to the `api` folder and create a `.env` Example:
+
 ```env
 GEMINI_API_KEY=""
 GEMINI_PRO_MODEL="gemini-pro"
@@ -311,13 +329,13 @@ DATABASE_URL=""
 
 Here are the key npm scripts for managing the monorepo:
 
-| Command           | Description                                              |
-|-----------------  |----------------------------------------------------------|
-| `turbo run build` | Builds all apps and packages.                            |
-| `rubo run dev`    | Starts the development servers for all apps.             |
-| `turbo run lint`  | Runs ESLint across all apps and packages.                |
-| `turbo run format`| Formats code using Prettier.                             |
-| `turbo run start` | Starts the whole application in production mode.         |
+| Command            | Description                                      |
+| ------------------ | ------------------------------------------------ |
+| `turbo run build`  | Builds all apps and packages.                    |
+| `rubo run dev`     | Starts the development servers for all apps.     |
+| `turbo run lint`   | Runs ESLint across all apps and packages.        |
+| `turbo run format` | Formats code using Prettier.                     |
+| `turbo run start`  | Starts the whole application in production mode. |
 
 ---
 
@@ -353,11 +371,9 @@ Your support is greatly appreciated!
 
 ---
 
-
 ## Contributing
 
 Contributions are welcome! Please fork the repo and create a pull request with your changes and tag me in to review your features.
-
 
 ## Future Roadmap
 
