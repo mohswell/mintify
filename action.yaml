@@ -601,13 +601,13 @@ runs:
           if [ -n "$test_results" ]; then
             echo "Tests generated successfully. Posting results to GitHub..."
             comment_body=$(cat <<EOF
-# 🧪 Automatically Generated Tests
+          # 🧪 Automatically Generated Tests
 
-${test_results}
+          ${test_results}
 
-*Review the generated tests and integrate them into your suite.*
-EOF
-)
+          *Review the generated tests and integrate them into your suite.*
+          EOF
+            )
             
             curl -X POST \
               -H "Authorization: Bearer ${TOKEN}" \
