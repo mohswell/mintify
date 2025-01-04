@@ -714,7 +714,7 @@ runs:
             
             echo "Posting comment to Jira issue ${issue_key}..."
             comment_response=$(curl -s -w "\n%{http_code}" \
-              "${JIRA_BASE_URL}/rest/api/3/issue/${issue_key}/comment" \
+              "${JIRA_BASE_URL}/rest/api/2/issue/${issue_key}/comment" \
               -H "${auth_header}" \
               -H "Content-Type: application/json" \
               -d "{\"body\": ${escaped_comment}}")
