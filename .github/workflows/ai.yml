@@ -28,7 +28,7 @@ jobs:
   
       - name: Download previous analysis data
         continue-on-error: true
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: analysis-data
           path: .analysis-data
