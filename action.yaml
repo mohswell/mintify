@@ -511,7 +511,7 @@ runs:
           GENERATE_TESTS: ${{ inputs.GENERATE_TESTS }}
 
       - name: Save analysis data
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: analysis-data
           path: .analysis-data
